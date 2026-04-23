@@ -1,0 +1,16 @@
+// 配置你的 GitHub 信息
+const config = {
+    username: "你的GitHub用户名",
+    repo: "你的仓库名",
+    folder: "img"
+};
+
+// 自动生成 GitHub 图片的完整 URL
+const getImgUrl = (filename) => 
+    `https://raw.githubusercontent.com/${config.username}/${config.repo}/main/${config.folder}/${encodeURIComponent(filename)}`;
+
+// 核心逻辑：自动根据作品 ID 和名称寻找所有关联图片
+const matchImagesForWork = (workId, allFilesFromGithub) => {
+    // 过滤出所有以 id 开头的图片，比如 "035-Parthenon.jpg" 和 "035-Acropolis plan.jpg"
+    return allFilesFromGithub.filter(file => file.startsWith(workId));
+};
