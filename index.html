@@ -7,44 +7,30 @@
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three-globe@2.24.13/dist/three-globe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
-        body { 
-            margin: 0; 
-            background: #000; 
-            color: white; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; 
-        }
-
-        /* Apple-style Glassmorphism UI */
+        body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
+        
+        /* Apple 风格导航栏 */
         nav {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            padding: 10px 25px;
-            border-radius: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 100;
-            display: flex;
-            gap: 20px;
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
+            padding: 10px 25px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100; display: flex; gap: 20px;
         }
-
-        nav a { color: white; text-decoration: none; font-size: 14px; font-weight: 500; opacity: 0.8; }
+        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; opacity: 0.6; transition: 0.3s; }
         nav a:hover { opacity: 1; }
 
-        #loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
+        /* 艺术品详情浮窗 */
+        #details {
+            position: fixed; bottom: 30px; left: 30px; width: 280px;
+            background: rgba(10, 10, 10, 0.7); backdrop-filter: blur(20px);
+            padding: 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none; z-index: 1000;
         }
 
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.5; font-weight: 200; }
         #globe-container { width: 100vw; height: 100vh; }
     </style>
 </head>
@@ -56,84 +42,92 @@
         <a href="#">COLLECTION</a>
     </nav>
 
-    <div id="loading">Initializing 3D Environment...</div>
+    <div id="loading">GENERATING WORLD MODEL...</div>
+    
+    <div id="details">
+        <h2 id="art-name" style="margin:0; font-size:18px; color:#00f2ff;"></h2>
+        <p id="art-loc" style="font-size:12px; margin:5px 0; opacity:0.8;"></p>
+    </div>
+
     <div id="globe-container"></div>
 
     <script>
         const container = document.getElementById('globe-container');
 
-// 1. 初始化渲染器
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-container.appendChild(renderer.domElement);
+        // 1. 基础环境
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+        
+        camera.position.z = 240; // 地球大小合适的位置
 
-// 2. 初始化场景
-const scene = new THREE.Scene();
+        // 2. 鼠标控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 0.8;
 
-// 3. 初始化相机 - 调整视角
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-// 把 400 改小（比如 250），地球就会看起来很大，占满半个屏幕
-camera.position.z = 250; 
+        // 3. 创建地球
+        const Globe = new ThreeGlobe()
+            .showAtmosphere(true)
+            .atmosphereColor('#3a228a')
+            .atmosphereDayLightIntensity(0.1);
 
-// 4. 【关键】引入控制器，让鼠标可以拖动和缩放
-// 我们需要动态加载轨道控制器脚本
-const script = document.createElement('script');
-script.src = 'https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/controls/OrbitControls.js';
-script.onload = () => {
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // 增加阻尼感，让旋转更平滑
-    controls.dampingFactor = 0.05;
-};
-document.head.appendChild(script);
+        // --- 核心改进：加载国家轮廓数据 (GeoJSON) ---
+        fetch('https://unpkg.com/three-globe/example/img/ne_110m_admin_0_countries.geojson')
+            .then(res => res.json())
+            .then(countries => {
+                Globe.hexPolygonsData(countries.features)
+                    .hexPolygonResolution(3)
+                    .hexPolygonMargin(0.3)
+                    .hexPolygonColor(() => 'rgba(255, 255, 255, 0.3)'); // 类似你图中的陆地效果
+                
+                document.getElementById('loading').style.display = 'none';
+            });
 
-// 5. 创建地球
-const Globe = new ThreeGlobe()
-    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
-    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
+        // 4. 作品数据
+        const testData = [
+            { lat: -27.95, lng: 16.73, name: '001: Apollo 11 stones', loc: 'Namibia' },
+            { lat: 45.04, lng: 1.17, name: '002: Lascaux Caves', loc: 'France' },
+            { lat: 30.27, lng: 120.15, name: '007: Jade Cong', loc: 'China' },
+            { lat: 31.32, lng: 45.63, name: '012: White Temple', loc: 'Iraq' }
+        ];
 
-// 测试点位数据
-const testData = [
-    { lat: -27.95, lng: 16.73, name: '001: Apollo 11 stones' },
-    { lat: 45.04, lng: 1.17, name: '002: Lascaux Caves' },
-    { lat: 30.27, lng: 120.15, name: '007: Jade Cong' }
-];
+        Globe.pointsData(testData)
+            .pointAltitude(0.02)
+            .pointColor(() => '#ff3b30') // 红色点位，更醒目
+            .pointRadius(0.8)
+            .onPointClick(d => {
+                const card = document.getElementById('details');
+                card.style.display = 'block';
+                document.getElementById('art-name').innerText = d.name;
+                document.getElementById('art-loc').innerText = d.loc;
+            });
 
-Globe.pointsData(testData)
-    .pointAltitude(0.05)
-    .pointColor(() => '#00f2ff')
-    .pointRadius(1.0);
+        scene.add(Globe);
 
-scene.add(Globe);
+        // 5. 光效
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(1, 1, 1);
+        scene.add(dirLight);
 
-// 6. 光效
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.position.set(1, 1, 1);
-scene.add(dirLight);
+        // 6. 渲染循环
+        function animate() {
+            controls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        animate();
 
-// 7. 渲染循环
-function animate() {
-    // 如果你希望自己手动拖动，可以注释掉下面这行自转代码
-    // Globe.rotation.y += 0.001; 
-    
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-}
-
-// 隐藏加载状态
-setTimeout(() => {
-    document.getElementById('status').style.display = 'none';
-}, 1000);
-
-animate();
-
-// 窗口适配
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
