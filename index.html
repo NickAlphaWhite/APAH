@@ -3,193 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP Art History 250 - Digital Museum</title>
+    <title>AP Art History 250 Explorer</title>
     
-    <script src="//unpkg.com/three"></script>
-    <script src="//unpkg.com/three-globe"></script>
-    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three-globe@2.24.13/dist/three-globe.min.js"></script>
 
     <style>
-        :root {
-            --apple-bg: rgba(255, 255, 255, 0.7);
-            --apple-blur: blur(20px);
+        body { 
+            margin: 0; 
+            background: #000; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; 
         }
 
-        body {
-            margin: 0;
-            background: #000;
-            color: #fff;
-            font-family: 'SF Pro Display', -apple-system, sans-serif;
-            overflow: hidden;
-        }
-
-        /* 背景流光效果 */
-        #bg-gradient {
-            position: fixed;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000 100%);
-            z-index: -1;
-        }
-
-        /* 顶部导航栏 - Apple 风格 */
+        /* Apple-style Glassmorphism UI */
         nav {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            padding: 10px 20px;
-            background: var(--apple-bg);
-            backdrop-filter: var(--apple-blur);
-            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 10px 25px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             z-index: 100;
+            display: flex;
+            gap: 20px;
         }
 
-        nav button {
-            background: none;
-            border: none;
-            color: #000;
-            padding: 8px 15px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: 0.3s;
-        }
+        nav a { color: white; text-decoration: none; font-size: 14px; font-weight: 500; opacity: 0.8; }
+        nav a:hover { opacity: 1; }
 
-        nav button:hover { opacity: 0.6; }
-
-        /* 作品详情卡片 - 自动匹配图片显示在这里 */
-        #card {
+        #loading {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 320px;
-            background: var(--apple-bg);
-            backdrop-filter: var(--apple-blur);
-            border-radius: 24px;
-            color: #000;
-            padding: 20px;
-            display: none;
-            animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-            z-index: 101;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
         }
 
-        #card img {
-            width: 100%;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-
-        #card h2 { margin: 0 0 5px 0; font-size: 18px; }
-        #card p { margin: 2px 0; font-size: 13px; opacity: 0.8; }
-
-        @keyframes slideUp {
-            from { transform: translateY(100px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* 地球容器 */
-        #globeViz { width: 100vw; height: 100vh; }
+        #globe-container { width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
 
-    <div id="bg-gradient"></div>
-
     <nav>
-        <button onclick="changeMode('globe')">Globe</button>
-        <button onclick="changeMode('timeline')">Timeline</button>
-        <button onclick="changeMode('quiz')">Quiz</button>
+        <a href="#">GLOBE</a>
+        <a href="#">TIMELINE</a>
+        <a href="#">COLLECTION</a>
     </nav>
 
-    <div id="globeViz"></div>
-
-    <div id="card">
-        <img id="art-img" src="" alt="Art">
-        <h2 id="art-title"></h2>
-        <p id="art-info"></p>
-        <p id="art-date"></p>
-    </div>
+    <div id="loading">Initializing 3D Environment...</div>
+    <div id="globe-container"></div>
 
     <script>
-        // 配置你的 GitHub 信息 (关键！)
-        const USERNAME = "NickAlphaWhite"; 
-        const REPO = "APAH";
-        const IMG_PATH = `https://raw.githubusercontent.com/${USERNAME}/${REPO}/main/img/`;
+        // --- 1. SETTINGS ---
+        const container = document.getElementById('globe-container');
 
-        let artData = [];
-
-        // 初始化 3D 地球
-        const Globe = new ThreeGlobe()
-            .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
-            .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-            .pointRadius(0.5)
-            .pointColor(() => '#00f2ff') // 极简科技青
-            .onPointClick(d => showDetails(d));
-
-        // 加载数据并生成点位
-        fetch('data.json')
-            .then(res => res.json())
-            .then(data => {
-                artData = data;
-                const pointsData = data.map(d => ({
-                    lat: d.loc[0],
-                    lng: d.loc[1],
-                    id: d.id,
-                    title: d.title,
-                    city: d.city,
-                    country: d.country,
-                    date: d.date
-                }));
-                Globe.pointsData(pointsData);
-            });
-
-        // 自动匹配并展示详情
-        function showDetails(d) {
-            const card = document.getElementById('card');
-            const img = document.getElementById('art-img');
-            
-            // 【核心算法】：根据 ID 和 Title 自动匹配图片名
-            // 匹配格式：img/001-Apollo 11 stones.jpg
-            const fileName = `${d.id}-${d.title}.jpg`;
-            img.src = `${IMG_PATH}${encodeURIComponent(fileName)}`;
-
-            document.getElementById('art-title').innerText = d.title;
-            document.getElementById('art-info').innerText = `${d.city}, ${d.country}`;
-            document.getElementById('art-date').innerText = d.date < 0 ? `${Math.abs(d.date)} B.C.E.` : `${d.date} C.E.`;
-            
-            card.style.display = 'block';
-        }
-
-        // 渲染器设置
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('globeViz').appendChild(renderer.domElement);
-
+        // --- 2. INITIALIZE THREE.JS SCENE ---
         const scene = new THREE.Scene();
-        scene.add(Globe);
-        scene.add(new THREE.AmbientLight(0xbbbbbb));
-        scene.add(new THREE.DirectionalLight(0xffffff, 0.6));
-
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
         camera.position.z = 400;
 
-        // 动画循环
-        (function animate() {
-            Globe.rotation.y += 0.001; // 缓慢自转
+        // --- 3. CREATE THE GLOBE ---
+        // Using high-quality textures from Three-Globe's own assets
+        const Globe = new ThreeGlobe()
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
+
+        // --- 4. HARDCODED TEST DATA (No data.json needed for now) ---
+        const testData = [
+            { lat: -27.95, lng: 16.73, label: '001: Apollo 11 stones' },
+            { lat: 45.04, lng: 1.17, label: '002: Lascaux Caves' },
+            { lat: 30.27, lng: 120.15, label: '007: Jade Cong' }
+        ];
+
+        Globe.pointsData(testData)
+            .pointAltitude(0.05)
+            .pointColor(() => '#00f2ff') // Neon Blue
+            .pointRadius(0.8);
+
+        scene.add(Globe);
+
+        // --- 5. LIGHTING ---
+        scene.add(new THREE.AmbientLight(0xbbbbbb, 0.7));
+        const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dLight.position.set(1, 1, 1);
+        scene.add(dLight);
+
+        // --- 6. ANIMATION LOOP ---
+        function animate() {
+            Globe.rotation.y += 0.0015; // Slow rotation
             renderer.render(scene, camera);
             requestAnimationFrame(animate);
-        })();
-
-        // 模式切换占位
-        function changeMode(mode) {
-            alert("正在进入 " + mode + " 模式... 这里可以加入平滑切换动画");
         }
+        
+        // Hide loading text once rendering starts
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 1500);
+
+        animate();
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
