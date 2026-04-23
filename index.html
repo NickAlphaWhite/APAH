@@ -60,65 +60,80 @@
     <div id="globe-container"></div>
 
     <script>
-        // --- 1. SETTINGS ---
         const container = document.getElementById('globe-container');
 
-        // --- 2. INITIALIZE THREE.JS SCENE ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
-        camera.position.z = 400;
+// 1. 初始化渲染器
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+container.appendChild(renderer.domElement);
 
-        // --- 3. CREATE THE GLOBE ---
-        // Using high-quality textures from Three-Globe's own assets
-        const Globe = new ThreeGlobe()
-            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
-            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
+// 2. 初始化场景
+const scene = new THREE.Scene();
 
-        // --- 4. HARDCODED TEST DATA (No data.json needed for now) ---
-        const testData = [
-            { lat: -27.95, lng: 16.73, label: '001: Apollo 11 stones' },
-            { lat: 45.04, lng: 1.17, label: '002: Lascaux Caves' },
-            { lat: 30.27, lng: 120.15, label: '007: Jade Cong' }
-        ];
+// 3. 初始化相机 - 调整视角
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+// 把 400 改小（比如 250），地球就会看起来很大，占满半个屏幕
+camera.position.z = 250; 
 
-        Globe.pointsData(testData)
-            .pointAltitude(0.05)
-            .pointColor(() => '#00f2ff') // Neon Blue
-            .pointRadius(0.8);
+// 4. 【关键】引入控制器，让鼠标可以拖动和缩放
+// 我们需要动态加载轨道控制器脚本
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/controls/OrbitControls.js';
+script.onload = () => {
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // 增加阻尼感，让旋转更平滑
+    controls.dampingFactor = 0.05;
+};
+document.head.appendChild(script);
 
-        scene.add(Globe);
+// 5. 创建地球
+const Globe = new ThreeGlobe()
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
 
-        // --- 5. LIGHTING ---
-        scene.add(new THREE.AmbientLight(0xbbbbbb, 0.7));
-        const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dLight.position.set(1, 1, 1);
-        scene.add(dLight);
+// 测试点位数据
+const testData = [
+    { lat: -27.95, lng: 16.73, name: '001: Apollo 11 stones' },
+    { lat: 45.04, lng: 1.17, name: '002: Lascaux Caves' },
+    { lat: 30.27, lng: 120.15, name: '007: Jade Cong' }
+];
 
-        // --- 6. ANIMATION LOOP ---
-        function animate() {
-            Globe.rotation.y += 0.0015; // Slow rotation
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        }
-        
-        // Hide loading text once rendering starts
-        setTimeout(() => {
-            document.getElementById('loading').style.display = 'none';
-        }, 1500);
+Globe.pointsData(testData)
+    .pointAltitude(0.05)
+    .pointColor(() => '#00f2ff')
+    .pointRadius(1.0);
 
-        animate();
+scene.add(Globe);
 
-        // Handle Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+// 6. 光效
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(1, 1, 1);
+scene.add(dirLight);
+
+// 7. 渲染循环
+function animate() {
+    // 如果你希望自己手动拖动，可以注释掉下面这行自转代码
+    // Globe.rotation.y += 0.001; 
+    
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+}
+
+// 隐藏加载状态
+setTimeout(() => {
+    document.getElementById('status').style.display = 'none';
+}, 1000);
+
+animate();
+
+// 窗口适配
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
     </script>
 </body>
 </html>
