@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,26 +11,14 @@
 
     <style>
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
-        
-        /* Apple 风格导航栏 */
         nav {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
             padding: 10px 25px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 100; display: flex; gap: 20px;
         }
-        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; opacity: 0.6; transition: 0.3s; }
-        nav a:hover { opacity: 1; }
-
-        /* 艺术品详情浮窗 */
-        #details {
-            position: fixed; bottom: 30px; left: 30px; width: 280px;
-            background: rgba(10, 10, 10, 0.7); backdrop-filter: blur(20px);
-            padding: 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
-            display: none; z-index: 1000;
-        }
-
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.5; font-weight: 200; }
+        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; opacity: 0.6; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.5; }
         #globe-container { width: 100vw; height: 100vh; }
     </style>
 </head>
@@ -42,19 +30,13 @@
         <a href="#">COLLECTION</a>
     </nav>
 
-    <div id="loading">GENERATING WORLD MODEL...</div>
-    
-    <div id="details">
-        <h2 id="art-name" style="margin:0; font-size:18px; color:#00f2ff;"></h2>
-        <p id="art-loc" style="font-size:12px; margin:5px 0; opacity:0.8;"></p>
-    </div>
-
+    <div id="loading">LOADING GEOGRAPHY...</div>
     <div id="globe-container"></div>
 
     <script>
         const container = document.getElementById('globe-container');
 
-        // 1. 基础环境
+        // 1. 初始化场景
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -62,60 +44,56 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
         
-        camera.position.z = 240; // 地球大小合适的位置
+        // --- 核心：地平线视角设置 ---
+        // 降低相机高度并靠近地球，复刻你上传图片的视角
+        camera.position.set(0, 160, 160); 
+        camera.lookAt(0, 0, 0);
 
-        // 2. 鼠标控制器
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.rotateSpeed = 0.8;
+        controls.minDistance = 150; // 限制缩放，防止地球变太小
+        controls.maxDistance = 300;
+        controls.maxPolarAngle = Math.PI * 0.5; // 禁止看到南极，保持地平线在下方的视角
 
-        // 3. 创建地球
-        const Globe = new ThreeGlobe()
-            .showAtmosphere(true)
-            .atmosphereColor('#3a228a')
-            .atmosphereDayLightIntensity(0.1);
+        // 2. 创建地球
+        const Globe = new ThreeGlobe().showAtmosphere(true);
 
-        // --- 核心改进：加载国家轮廓数据 (GeoJSON) ---
-        fetch('https://unpkg.com/three-globe/example/img/ne_110m_admin_0_countries.geojson')
-            .then(res => res.json())
+        // --- 修复点：使用更稳定的 GeoJSON 链接 ---
+        // 我们改用 Vasturiano (库作者) 仓库下的稳定路径
+        const GEO_URL = 'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/country-polygons/ne_110m_admin_0_countries.geojson';
+
+        fetch(GEO_URL)
+            .then(res => {
+                if (!res.ok) throw new Error('Fetch failed');
+                return res.json();
+            })
             .then(countries => {
                 Globe.hexPolygonsData(countries.features)
                     .hexPolygonResolution(3)
                     .hexPolygonMargin(0.3)
-                    .hexPolygonColor(() => 'rgba(255, 255, 255, 0.3)'); // 类似你图中的陆地效果
+                    .hexPolygonColor(() => 'rgba(255, 255, 255, 0.4)');
                 
                 document.getElementById('loading').style.display = 'none';
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('loading').innerText = "Data load error, retrying...";
             });
 
-        // 4. 作品数据
-        const testData = [
-            { lat: -27.95, lng: 16.73, name: '001: Apollo 11 stones', loc: 'Namibia' },
-            { lat: 45.04, lng: 1.17, name: '002: Lascaux Caves', loc: 'France' },
-            { lat: 30.27, lng: 120.15, name: '007: Jade Cong', loc: 'China' },
-            { lat: 31.32, lng: 45.63, name: '012: White Temple', loc: 'Iraq' }
+        // 作品点位
+        const testPoints = [
+            { lat: 30.27, lng: 120.15, name: '007: Jade Cong' },
+            { lat: 37.97, lng: 23.72, name: '035: Acropolis' }
         ];
 
-        Globe.pointsData(testData)
-            .pointAltitude(0.02)
-            .pointColor(() => '#ff3b30') // 红色点位，更醒目
-            .pointRadius(0.8)
-            .onPointClick(d => {
-                const card = document.getElementById('details');
-                card.style.display = 'block';
-                document.getElementById('art-name').innerText = d.name;
-                document.getElementById('art-loc').innerText = d.loc;
-            });
+        Globe.pointsData(testPoints)
+            .pointColor(() => '#ff3b30')
+            .pointRadius(0.8);
 
         scene.add(Globe);
-
-        // 5. 光效
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(1, 1, 1);
-        scene.add(dirLight);
 
-        // 6. 渲染循环
+        // 3. 渲染循环
         function animate() {
             controls.update();
             renderer.render(scene, camera);
