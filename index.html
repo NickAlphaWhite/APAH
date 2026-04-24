@@ -3,134 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP Art History 250 - Digital Archive</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three-globe@2.24.13/dist/three-globe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/controls/OrbitControls.js"></script>
-
+    <title>APAH 250 | Immersive Archive</title>
+    <script src="https://unpkg.com/globe.gl"></script>
     <style>
-        body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
+        :root { 
+            --apple-blue: #007AFF; 
+            --card-w: 66vw; 
+            --glass: rgba(10, 10, 12, 0.75);
+        }
         
-        /* 导航栏 */
-        nav {
+        body { 
+            margin: 0; 
+            background: #000; 
+            overflow: hidden; 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
+            color: white; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 1. 悬浮胶囊导航 - 始终保持物理中心 */
+        #nav-container {
             position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(20px);
-            padding: 8px 30px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.08);
-            z-index: 100; display: flex; gap: 40px;
+            display: flex; gap: 10px; z-index: 2000;
         }
-        nav a { color: white; text-decoration: none; font-size: 10px; font-weight: 600; opacity: 0.4; letter-spacing: 3px; text-transform: uppercase; transition: 0.3s; }
-        nav a:hover { opacity: 1; text-shadow: 0 0 8px rgba(0,242,255,0.5); }
+        .nav-capsule {
+            background: rgba(25, 25, 28, 0.5); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 30px;
+            padding: 12px 35px; display: flex; gap: 45px; align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .nav-item { font-size: 11px; font-weight: 600; letter-spacing: 2px; cursor: pointer; opacity: 0.4; transition: 0.3s; }
+        .nav-item.active, .nav-item:hover { opacity: 1; color: var(--apple-blue); }
 
-        /* 详情卡片 */
+        /* 2. 地球容器与动态偏移 */
+        #globeViz { 
+            width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; 
+            background: radial-gradient(circle at center, #1a1a1c 0%, #000000 100%); 
+            transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        body.card-open #globeViz { transform: translateX(-10%); } /* 适度左偏，保留地球轮廓 */
+
+        /* 3. 巨幕侧边面板 (2/3 宽度) */
         #card {
-            position: fixed; bottom: -100%; left: 40px; width: 260px;
-            background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(30px);
-            border-radius: 28px; border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 24px; transition: 0.8s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
+            position: fixed; right: calc(-1 * var(--card-w)); top: 0; bottom: 0; width: var(--card-w);
+            background: var(--glass); backdrop-filter: blur(60px) saturate(210%);
+            -webkit-backdrop-filter: blur(60px) saturate(210%);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 100px 8% 60px 8%; transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1); 
+            z-index: 1500; display: flex; flex-direction: column; overflow-y: auto; box-sizing: border-box;
         }
-        #card.active { bottom: 40px; }
-        #card-img { width: 100%; border-radius: 16px; margin-bottom: 20px; background: #111; }
-        #card-title { margin: 0; font-size: 17px; color: #00f2ff; font-weight: 500; }
-        #card-detail { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.5; }
+        #card.active { right: 0; }
+        #card-img { width: 100%; max-height: 50vh; object-fit: cover; border-radius: 24px; margin-bottom: 50px; box-shadow: 0 30px 80px rgba(0,0,0,0.8); }
+        #card-title { font-size: clamp(32px, 5vw, 60px); font-weight: 800; margin: 0; letter-spacing: -2px; line-height: 1.1; }
+        #card-subtitle { color: var(--apple-blue); font-size: 14px; margin-top: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
+        #card-detail { font-size: 18px; opacity: 0.6; line-height: 1.7; margin-top: 40px; max-width: 750px; }
 
-        #close-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; opacity: 0.3; }
-        #globe-container { width: 100vw; height: 100vh; cursor: crosshair; }
+        .close-trigger { position: absolute; top: 40px; right: 8%; cursor: pointer; font-size: 24px; opacity: 0.3; transition: 0.3s; }
+        .close-trigger:hover { opacity: 1; }
+
+        /* 4. 时间轴视图 */
+        #timeline-view {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; display: none; z-index: 1800; padding: 140px 10%;
+            box-sizing: border-box; overflow-y: auto;
+        }
+        .timeline-container { border-left: 2px solid var(--apple-blue); padding-left: 40px; margin-top: 60px; }
+        .timeline-item { position: relative; margin-bottom: 60px; }
+        .timeline-dot { 
+            position: absolute; left: -46px; top: 8px; width: 10px; height: 10px; 
+            background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 15px var(--apple-blue);
+        }
     </style>
 </head>
 <body>
 
-    <nav>
-        <a href="#">Explore</a>
-        <a href="#">Chronicle</a>
-        <a href="#">Archive</a>
-    </nav>
-
-    <div id="card">
-        <div id="close-btn" onclick="closeCard()">✕</div>
-        <img id="card-img" src="" alt="Artwork">
-        <div id="card-title"></div>
-        <div id="card-detail"></div>
+    <div id="nav-container">
+        <div class="nav-capsule">
+            <div class="nav-item active" onclick="switchMode('explore')">EXPLORE</div>
+            <div class="nav-item" onclick="switchMode('timeline')">CHRONICLE</div>
+            <div class="nav-item" onclick="switchMode('quiz')">ASSESSMENT</div>
+        </div>
     </div>
 
-    <div id="globe-container"></div>
+    <div id="globeViz"></div>
+
+    <div id="card">
+        <div class="close-trigger" onclick="closeCard()">✕</div>
+        <img id="card-img" src="">
+        <div class="card-content">
+            <h2 id="card-title"></h2>
+            <div id="card-subtitle"></div>
+            <p id="card-detail"></p>
+        </div>
+    </div>
+
+    <div id="timeline-view">
+        <h1 style="font-size: 64px; font-weight: 800; letter-spacing: -3px; margin: 0;">The Chronicle</h1>
+        <div id="timeline-content" class="timeline-container"></div>
+    </div>
 
     <script>
-        // 声明为全局变量，方便你以后在控制台测试
-        let myGlobe, scene, camera, renderer, controls;
-
-        const AP_DATA = [
-            { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 stones", loc: "Namibia", img: "001.jpg" },
-            { id: "002", lat: 25.10, lng: -10.40, title: "Great Hall of the Bulls", loc: "France", img: "002.jpg" },
-            { id: "004", lat: 47.45, lng: 0.45, title: "Running Horned Woman", loc: "Algeria", img: "004.jpg" },
-            { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", img: "007.jpg" },
-            { id: "008", lat: 51.17, lng: -1.82, title: "Stonehenge", loc: "UK", img: "008.jpg" },
-            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", img: "035.jpg" },
-            { id: "157", lat: 19.43, lng: -99.13, title: "Templo Mayor", loc: "Mexico", img: "157.jpg" },
-            { id: "181", lat: 34.20, lng: 108.90, title: "Terracotta warriors", loc: "China", img: "181.jpg" },
-            { id: "213", lat: -13.50, lng: -71.90, title: "Chavín de Huántar", loc: "Peru", img: "213.jpg" }
+        // 数据示例 (对接 250 数据时只需按此格式添加)
+        const APAH_DATA = [
+            { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 Stones", loc: "Namibia", period: "c. 25,500 BCE", img: "001.jpg", desc: "These stone fragments represent some of the earliest evidence of human artistic expression on the African continent, featuring stylized animal figures." },
+            { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", period: "c. 3300 BCE", img: "007.jpg", desc: "Intricate jade carvings from the Liangzhu culture, representing a sophisticated understanding of ritual and geometry." },
+            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", period: "c. 447 BCE", img: "035.jpg", desc: "The pinnacle of Classical Greek architecture, symbolizing the height of Athenian democracy and cultural influence." }
         ];
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('globe-container').appendChild(renderer.domElement);
+        // 初始化地球
+        const world = Globe()(document.getElementById('globeViz'))
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+            .showAtmosphere(true).atmosphereColor('#4ca5ff').atmosphereAltitude(0.12)
+            .pointsData(APAH_DATA).pointColor(() => '#fff').pointRadius(0.7).pointAltitude(0.01)
+            .onPointClick(d => focusOnArtwork(d));
+
+        world.controls().autoRotate = true;
+        world.controls().autoRotateSpeed = 0.05;
+        world.pointOfView({ altitude: 2.2 });
+
+        function switchMode(mode) {
+            // 更新导航高亮
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active');
+                if(el.innerText.toLowerCase() === mode || (mode === 'timeline' && el.innerText === 'CHRONICLE')) el.classList.add('active');
+            });
+
+            // 切换视图显示
+            const isTimeline = (mode === 'timeline');
+            document.getElementById('timeline-view').style.display = isTimeline ? 'block' : 'none';
+            document.getElementById('globeViz').style.visibility = isTimeline ? 'hidden' : 'visible';
             
-            // 地平线视角锁定
-            camera.position.set(0, 50, 160); 
-
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.3; // 极慢的自转，显得从容
-            controls.minPolarAngle = Math.PI * 0.47; 
-            controls.maxPolarAngle = Math.PI * 0.52; 
-
-            myGlobe = new ThreeGlobe()
-                .globeImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-night.jpg')
-                .showAtmosphere(true)
-                .atmosphereColor('#00f2ff')
-                .pointsData(AP_DATA)
-                .pointColor(() => '#00f2ff')
-                .pointRadius(0.6)
-                .pointAltitude(0)
-                .onPointClick(d => showCard(d));
-
-            scene.add(myGlobe);
-            scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-
-            animate();
+            if (isTimeline) {
+                renderTimeline();
+                world.controls().autoRotate = false;
+            } else {
+                if (!document.body.classList.contains('card-open')) world.controls().autoRotate = true;
+            }
+            closeCard(); 
         }
 
-        function showCard(d) {
-            const card = document.getElementById('card');
-            // 容错处理：图片加载
+        function renderTimeline() {
+            document.getElementById('timeline-content').innerHTML = APAH_DATA.map(d => `
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div style="font-size: 12px; opacity: 0.4; margin-bottom: 5px;">${d.period}</div>
+                    <div style="font-size: 28px; font-weight: 700; letter-spacing: -1px;">${d.title}</div>
+                    <div style="opacity: 0.5; font-size: 14px;">${d.loc}</div>
+                </div>
+            `).join('');
+        }
+
+        function focusOnArtwork(d) {
+            document.body.classList.add('card-open');
+            world.controls().autoRotate = false;
+            
+            // 补偿逻辑：lng + 20 确保点位落在左侧视野中心
+            world.pointOfView({ 
+                lat: d.lat - 5, 
+                lng: d.lng + 20, 
+                altitude: 0.65 
+            }, 2000);
+            
             document.getElementById('card-img').src = `img/${d.img}`;
             document.getElementById('card-title').innerText = d.title;
-            document.getElementById('card-detail').innerText = `CATALOG ID: ${d.id}\nORIGIN: ${d.loc}`;
-            card.classList.add('active');
+            document.getElementById('card-subtitle').innerText = `${d.loc} / ${d.period}`;
+            document.getElementById('card-detail').innerText = d.desc;
+            document.getElementById('card').classList.add('active');
         }
 
         function closeCard() {
+            // 1. 移除偏移类
+            document.body.classList.remove('card-open');
             document.getElementById('card').classList.remove('active');
+            
+            // 2. 镜头回正的同时，直接开启自转
+            world.controls().autoRotate = true; 
+            world.controls().autoRotateSpeed = 1; // 稍微提速，增加动态感
+
+            world.pointOfView({ 
+                lat: 10, 
+                lng: world.pointOfView().lng, // 顺着当前的经度直接回正，不产生逆向跳动
+                altitude: 2.2 
+            }, 1500);
+
+            // 3. 兜底逻辑：确保在模式切换回来时也能转
+            const isExplore = document.getElementById('timeline-view').style.display !== 'block';
+            if (!isExplore) {
+                world.controls().autoRotate = false;
+            }
         }
 
-        function animate() {
-            controls.update();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        }
+// 补充：初始化时的速度也同步提升
+world.controls().autoRotateSpeed = 1;
 
+        // 处理 Retina 屏幕清晰度
+        const renderer = world.renderer();
+        if (renderer) renderer.setPixelRatio(window.devicePixelRatio);
+
+        // 窗口缩放适配
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            world.width(window.innerWidth);
+            world.height(window.innerHeight);
         });
-
-        init();
     </script>
 </body>
 </html>
