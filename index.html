@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP Art History 250 - Digital Museum</title>
+    <title>AP Art History 250 - Digital Archive</title>
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three-globe@2.24.13/dist/three-globe.min.js"></script>
@@ -11,33 +11,39 @@
 
     <style>
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
+        
+        /* 导航栏 */
         nav {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px);
-            padding: 12px 30px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 100; display: flex; gap: 30px;
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(20px);
+            padding: 8px 30px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100; display: flex; gap: 40px;
         }
-        nav a { color: white; text-decoration: none; font-size: 11px; font-weight: 500; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
+        nav a { color: white; text-decoration: none; font-size: 10px; font-weight: 600; opacity: 0.4; letter-spacing: 3px; text-transform: uppercase; transition: 0.3s; }
+        nav a:hover { opacity: 1; text-shadow: 0 0 8px rgba(0,242,255,0.5); }
+
+        /* 详情卡片 */
         #card {
-            position: fixed; bottom: -100%; left: 30px; width: 280px;
-            background: rgba(15, 15, 15, 0.7); backdrop-filter: blur(25px);
-            border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 24px; transition: 0.7s cubic-bezier(0.19, 1, 0.22, 1); z-index: 1000;
+            position: fixed; bottom: -100%; left: 40px; width: 260px;
+            background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(30px);
+            border-radius: 28px; border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px; transition: 0.8s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
         }
-        #card.active { bottom: 30px; }
-        #card-img { width: 100%; border-radius: 14px; margin-bottom: 15px; }
-        #card-title { margin: 0; font-size: 18px; color: #00f2ff; font-weight: 600; }
-        #card-detail { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px; }
-        #close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; opacity: 0.3; }
-        #globe-container { width: 100vw; height: 100vh; }
+        #card.active { bottom: 40px; }
+        #card-img { width: 100%; border-radius: 16px; margin-bottom: 20px; background: #111; }
+        #card-title { margin: 0; font-size: 17px; color: #00f2ff; font-weight: 500; }
+        #card-detail { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.5; }
+
+        #close-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; opacity: 0.3; }
+        #globe-container { width: 100vw; height: 100vh; cursor: crosshair; }
     </style>
 </head>
 <body>
 
     <nav>
-        <a href="#">Globe</a>
-        <a href="#">Timeline</a>
-        <a href="#">Collection</a>
+        <a href="#">Explore</a>
+        <a href="#">Chronicle</a>
+        <a href="#">Archive</a>
     </nav>
 
     <div id="card">
@@ -50,49 +56,61 @@
     <div id="globe-container"></div>
 
     <script>
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('globe-container').appendChild(renderer.domElement);
-        
-        // 地平线视角设置
-        camera.position.set(0, 70, 180); 
+        // 声明为全局变量，方便你以后在控制台测试
+        let myGlobe, scene, camera, renderer, controls;
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.minPolarAngle = Math.PI * 0.45; 
-        controls.maxPolarAngle = Math.PI * 0.52; 
-
-        // 创建地球
-        const Globe = new ThreeGlobe()
-            .globeImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-night.jpg')
-            .showAtmosphere(true)
-            .atmosphereColor('#00f2ff');
-
-        // 使用最稳定的 pointsData 模拟光柱
-        const artPoints = [
+        const AP_DATA = [
             { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 stones", loc: "Namibia", img: "001.jpg" },
+            { id: "002", lat: 25.10, lng: -10.40, title: "Great Hall of the Bulls", loc: "France", img: "002.jpg" },
+            { id: "004", lat: 47.45, lng: 0.45, title: "Running Horned Woman", loc: "Algeria", img: "004.jpg" },
             { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", img: "007.jpg" },
-            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", img: "035.jpg" }
+            { id: "008", lat: 51.17, lng: -1.82, title: "Stonehenge", loc: "UK", img: "008.jpg" },
+            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", img: "035.jpg" },
+            { id: "157", lat: 19.43, lng: -99.13, title: "Templo Mayor", loc: "Mexico", img: "157.jpg" },
+            { id: "181", lat: 34.20, lng: 108.90, title: "Terracotta warriors", loc: "China", img: "181.jpg" },
+            { id: "213", lat: -13.50, lng: -71.90, title: "Chavín de Huántar", loc: "Peru", img: "213.jpg" }
         ];
 
-        // 核心修复：用 points 代替 bars
-        Globe.pointsData(artPoints)
-            .pointAltitude(0.02) // 赋予高度，使其看起来像立体的
-            .pointColor(() => '#00f2ff')
-            .pointRadius(0.8)
-            .onPointClick(d => showCard(d));
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('globe-container').appendChild(renderer.domElement);
+            
+            // 地平线视角锁定
+            camera.position.set(0, 50, 160); 
 
-        scene.add(Globe);
-        scene.add(new THREE.AmbientLight(0xffffff, 1));
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.3; // 极慢的自转，显得从容
+            controls.minPolarAngle = Math.PI * 0.47; 
+            controls.maxPolarAngle = Math.PI * 0.52; 
+
+            myGlobe = new ThreeGlobe()
+                .globeImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-night.jpg')
+                .showAtmosphere(true)
+                .atmosphereColor('#00f2ff')
+                .pointsData(AP_DATA)
+                .pointColor(() => '#00f2ff')
+                .pointRadius(0.6)
+                .pointAltitude(0)
+                .onPointClick(d => showCard(d));
+
+            scene.add(myGlobe);
+            scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+            animate();
+        }
 
         function showCard(d) {
             const card = document.getElementById('card');
+            // 容错处理：图片加载
             document.getElementById('card-img').src = `img/${d.img}`;
             document.getElementById('card-title').innerText = d.title;
-            document.getElementById('card-detail').innerText = `CATALOG: ${d.id} | LOCATION: ${d.loc}`;
+            document.getElementById('card-detail').innerText = `CATALOG ID: ${d.id}\nORIGIN: ${d.loc}`;
             card.classList.add('active');
         }
 
@@ -105,13 +123,14 @@
             renderer.render(scene, camera);
             requestAnimationFrame(animate);
         }
-        animate();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        init();
     </script>
 </body>
 </html>
