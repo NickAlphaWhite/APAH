@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP Art History 250 Explorer</title>
+    <title>AP Art History 250 - Digital Museum</title>
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three-globe@2.24.13/dist/three-globe.min.js"></script>
@@ -11,14 +11,31 @@
 
     <style>
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
+        
+        /* 顶部导航 - 极致简约 */
         nav {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
-            padding: 10px 25px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 100; display: flex; gap: 20px;
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px);
+            padding: 12px 30px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100; display: flex; gap: 30px;
         }
-        nav a { color: white; text-decoration: none; font-size: 13px; font-weight: 500; opacity: 0.6; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.5; }
+        nav a { color: white; text-decoration: none; font-size: 11px; font-weight: 500; opacity: 0.5; letter-spacing: 2px; }
+        nav a:hover { opacity: 1; }
+
+        /* 详情卡片 - 磨砂玻璃效果 */
+        #card {
+            position: fixed; bottom: -100%; left: 30px; width: 280px;
+            background: rgba(15, 15, 15, 0.7); backdrop-filter: blur(25px);
+            border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px; transition: 0.7s cubic-bezier(0.19, 1, 0.22, 1); z-index: 1000;
+        }
+        #card.active { bottom: 30px; }
+        #card-img { width: 100%; border-radius: 14px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        #card-title { margin: 0; font-size: 18px; color: #00f2ff; font-weight: 600; line-height: 1.2; }
+        #card-detail { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px; letter-spacing: 0.5px; }
+
+        #close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; opacity: 0.3; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.3; letter-spacing: 4px; font-size: 9px; }
         #globe-container { width: 100vw; height: 100vh; }
     </style>
 </head>
@@ -30,75 +47,79 @@
         <a href="#">COLLECTION</a>
     </nav>
 
-    <div id="loading">LOADING GEOGRAPHY...</div>
+    <div id="loading">SYNCHRONIZING GLOBAL DATA...</div>
+    
+    <div id="card">
+        <div id="close-btn" onclick="closeCard()">✕</div>
+        <img id="card-img" src="" alt="Artwork">
+        <div id="card-title"></div>
+        <div id="card-detail"></div>
+    </div>
+
     <div id="globe-container"></div>
 
     <script>
-        const container = document.getElementById('globe-container');
-
-        // 1. 初始化场景
+        // 1. 初始化
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
+        document.getElementById('globe-container').appendChild(renderer.domElement);
         
-        // --- 核心：地平线视角设置 ---
-        // 降低相机高度并靠近地球，复刻你上传图片的视角
-        camera.position.set(0, 160, 160); 
-        camera.lookAt(0, 0, 0);
+        // --- 核心：地平线视角设定 ---
+        camera.position.set(0, 65, 175); 
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.minDistance = 150; // 限制缩放，防止地球变太小
-        controls.maxDistance = 300;
-        controls.maxPolarAngle = Math.PI * 0.5; // 禁止看到南极，保持地平线在下方的视角
+        // 限制旋转范围，保持地平线在屏幕中下部
+        controls.minPolarAngle = Math.PI * 0.46; 
+        controls.maxPolarAngle = Math.PI * 0.53; 
 
-        // 2. 创建地球
-        const Globe = new ThreeGlobe().showAtmosphere(true);
+        // 2. 地球模型设计
+        const Globe = new ThreeGlobe()
+            .globeImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-night.jpg')
+            .bumpImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-topology.png')
+            .showAtmosphere(true)
+            .atmosphereColor('#00f2ff'); // 霓虹青大气层
 
-        // --- 修复点：使用更稳定的 GeoJSON 链接 ---
-        // 我们改用 Vasturiano (库作者) 仓库下的稳定路径
-        const GEO_URL = 'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/country-polygons/ne_110m_admin_0_countries.geojson';
-
-        fetch(GEO_URL)
-            .then(res => {
-                if (!res.ok) throw new Error('Fetch failed');
-                return res.json();
-            })
-            .then(countries => {
-                Globe.hexPolygonsData(countries.features)
-                    .hexPolygonResolution(3)
-                    .hexPolygonMargin(0.3)
-                    .hexPolygonColor(() => 'rgba(255, 255, 255, 0.4)');
-                
-                document.getElementById('loading').style.display = 'none';
-            })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('loading').innerText = "Data load error, retrying...";
-            });
-
-        // 作品点位
-        const testPoints = [
-            { lat: 30.27, lng: 120.15, name: '007: Jade Cong' },
-            { lat: 37.97, lng: 23.72, name: '035: Acropolis' }
+        // 测试数据：改用青色光柱
+        const artPoints = [
+            { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 stones", loc: "Namibia", img: "001.jpg" },
+            { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", img: "007.jpg" },
+            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", img: "035.jpg" }
         ];
 
-        Globe.pointsData(testPoints)
-            .pointColor(() => '#ff3b30')
-            .pointRadius(0.8);
+        Globe.barsData(artPoints)
+            .barAltitude(0.015)
+            .barRadius(0.7)
+            .barColor(() => '#00f2ff')
+            .onBarClick(d => showCard(d));
 
         scene.add(Globe);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
-        // 3. 渲染循环
+        // 3. 交互函数
+        function showCard(d) {
+            const card = document.getElementById('card');
+            // 默认从你的 img 文件夹读取图片
+            document.getElementById('card-img').src = `img/${d.img}`;
+            document.getElementById('card-title').innerText = d.title;
+            document.getElementById('card-detail').innerText = `CATALOG: ${d.id} | LOCATION: ${d.loc}`;
+            card.classList.add('active');
+        }
+
+        function closeCard() {
+            document.getElementById('card').classList.remove('active');
+        }
+
         function animate() {
             controls.update();
             renderer.render(scene, camera);
             requestAnimationFrame(animate);
         }
+        
+        setTimeout(() => document.getElementById('loading').style.display = 'none', 1500);
         animate();
 
         window.addEventListener('resize', () => {
