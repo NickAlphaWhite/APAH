@@ -11,18 +11,13 @@
 
     <style>
         body { margin: 0; background: #000; color: white; font-family: -apple-system, sans-serif; overflow: hidden; }
-        
-        /* 顶部导航 - 极致简约 */
         nav {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px);
             padding: 12px 30px; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 100; display: flex; gap: 30px;
         }
-        nav a { color: white; text-decoration: none; font-size: 11px; font-weight: 500; opacity: 0.5; letter-spacing: 2px; }
-        nav a:hover { opacity: 1; }
-
-        /* 详情卡片 - 磨砂玻璃效果 */
+        nav a { color: white; text-decoration: none; font-size: 11px; font-weight: 500; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; }
         #card {
             position: fixed; bottom: -100%; left: 30px; width: 280px;
             background: rgba(15, 15, 15, 0.7); backdrop-filter: blur(25px);
@@ -30,25 +25,21 @@
             padding: 24px; transition: 0.7s cubic-bezier(0.19, 1, 0.22, 1); z-index: 1000;
         }
         #card.active { bottom: 30px; }
-        #card-img { width: 100%; border-radius: 14px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        #card-title { margin: 0; font-size: 18px; color: #00f2ff; font-weight: 600; line-height: 1.2; }
-        #card-detail { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px; letter-spacing: 0.5px; }
-
+        #card-img { width: 100%; border-radius: 14px; margin-bottom: 15px; }
+        #card-title { margin: 0; font-size: 18px; color: #00f2ff; font-weight: 600; }
+        #card-detail { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px; }
         #close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; opacity: 0.3; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.3; letter-spacing: 4px; font-size: 9px; }
         #globe-container { width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
 
     <nav>
-        <a href="#">GLOBE</a>
-        <a href="#">TIMELINE</a>
-        <a href="#">COLLECTION</a>
+        <a href="#">Globe</a>
+        <a href="#">Timeline</a>
+        <a href="#">Collection</a>
     </nav>
 
-    <div id="loading">SYNCHRONIZING GLOBAL DATA...</div>
-    
     <div id="card">
         <div id="close-btn" onclick="closeCard()">✕</div>
         <img id="card-img" src="" alt="Artwork">
@@ -59,7 +50,6 @@
     <div id="globe-container"></div>
 
     <script>
-        // 1. 初始化
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -67,42 +57,39 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('globe-container').appendChild(renderer.domElement);
         
-        // --- 核心：地平线视角设定 ---
-        camera.position.set(0, 65, 175); 
+        // 地平线视角设置
+        camera.position.set(0, 70, 180); 
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        // 限制旋转范围，保持地平线在屏幕中下部
-        controls.minPolarAngle = Math.PI * 0.46; 
-        controls.maxPolarAngle = Math.PI * 0.53; 
+        controls.minPolarAngle = Math.PI * 0.45; 
+        controls.maxPolarAngle = Math.PI * 0.52; 
 
-        // 2. 地球模型设计
+        // 创建地球
         const Globe = new ThreeGlobe()
             .globeImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-night.jpg')
-            .bumpImageUrl('https://fastly.jsdelivr.net/gh/vasturiano/three-globe/example/img/earth-topology.png')
             .showAtmosphere(true)
-            .atmosphereColor('#00f2ff'); // 霓虹青大气层
+            .atmosphereColor('#00f2ff');
 
-        // 测试数据：改用青色光柱
+        // 使用最稳定的 pointsData 模拟光柱
         const artPoints = [
             { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 stones", loc: "Namibia", img: "001.jpg" },
             { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", img: "007.jpg" },
             { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", img: "035.jpg" }
         ];
 
-        Globe.barsData(artPoints)
-            .barAltitude(0.015)
-            .barRadius(0.7)
-            .barColor(() => '#00f2ff')
-            .onBarClick(d => showCard(d));
+        // 核心修复：用 points 代替 bars
+        Globe.pointsData(artPoints)
+            .pointAltitude(0.02) // 赋予高度，使其看起来像立体的
+            .pointColor(() => '#00f2ff')
+            .pointRadius(0.8)
+            .onPointClick(d => showCard(d));
 
         scene.add(Globe);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        scene.add(new THREE.AmbientLight(0xffffff, 1));
 
-        // 3. 交互函数
         function showCard(d) {
             const card = document.getElementById('card');
-            // 默认从你的 img 文件夹读取图片
             document.getElementById('card-img').src = `img/${d.img}`;
             document.getElementById('card-title').innerText = d.title;
             document.getElementById('card-detail').innerText = `CATALOG: ${d.id} | LOCATION: ${d.loc}`;
@@ -118,8 +105,6 @@
             renderer.render(scene, camera);
             requestAnimationFrame(animate);
         }
-        
-        setTimeout(() => document.getElementById('loading').style.display = 'none', 1500);
         animate();
 
         window.addEventListener('resize', () => {
