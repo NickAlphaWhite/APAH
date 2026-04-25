@@ -407,3 +407,16 @@ const imageFiles = [
     "249-MAXXI National Museum of XXI Century Arts.jpg",
     "250-Kui Hua Zi.jpg",
 ];
+const APAH_IMG_LIST = {};
+
+imageFilesRaw.forEach(filename => {
+    // 提取开头的数字，例如从 "008-Stonehenge-1.jpg" 提取 "8"
+    const match = filename.match(/^(\d+)/);
+    if (match) {
+        const id = parseInt(match[1]);
+        if (!APAH_IMG_LIST[id]) {
+            APAH_IMG_LIST[id] = [];
+        }
+        APAH_IMG_LIST[id].push(filename);
+    }
+});
