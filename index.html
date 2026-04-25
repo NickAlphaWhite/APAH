@@ -156,38 +156,40 @@
         function focusOnArtwork(d) {
             document.body.classList.add('card-open');
             world.controls().autoRotate = false;
+            world.pointOfView({ lat: d.lat - 5, lng: d.lng + 25, altitude: 0.7 }, 1800);
             
-            world.pointOfView({ 
-                lat: d.lat - 5, 
-                lng: d.lng + 25, 
-                altitude: 0.7 
-            }, 1800);
-            
-            const imgEl = document.getElementById('card-img');
-            
-            // 从预处理好的 Map 中直接拿文件名
-            const matches = APAH_IMG_MAP[d.id];
-            
-            if (matches && matches.length > 0) {
-                // 如果该编号有多个图，默认加载第一个
-                imgEl.src = `img/${matches[0]}`;
-                console.log(`Found image in index: ${matches[0]}`);
-            } else {
-                // 如果索引里没有，尝试最后的降级方案
-                const paddedId = String(d.id).padStart(3, '0');
-                imgEl.src = `img/${paddedId}.jpg`; 
-                console.warn(`No index match for ID ${d.id}, trying fallback.`);
-            }
+            const container = document.getElementById('card-img-container');
+            container.innerHTML = ''; // 清空之前的图片
 
-            imgEl.onerror = function() {
-                this.src = 'https://via.placeholder.com/800x600?text=Image+Missing';
-                this.onerror = null;
-            };
+            const matches = APAH_IMG_MAP[d.id] || [];
+            
+            if (matches.length > 0) {
+                // 遍历并创建所有图片
+                matches.forEach(imgName => {
+                    const img = document.createElement('img');
+                    img.src = `img/${imgName}`;
+                    img.className = 'gallery-img';
+                    img.alt = d.title;
+                    img.onerror = () => img.style.display = 'none'; // 加载失败则隐藏
+                    container.appendChild(img);
+                });
+            } else {
+                // 回退方案：尝试带补全编号的单图
+                const paddedId = String(d.id).padStart(3, '0');
+                const img = document.createElement('img');
+                img.src = `img/${paddedId}.jpg`;
+                img.className = 'gallery-img';
+                img.onerror = () => img.src = 'https://via.placeholder.com/800x600?text=Image+Missing';
+                container.appendChild(img);
+            }
 
             document.getElementById('card-title').innerText = d.title;
             document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date}`;
             document.getElementById('card-detail').innerText = d.description;
             document.getElementById('card').classList.add('active');
+            
+            // 回顶侧边栏
+            document.getElementById('card').scrollTop = 0;
         }
 
         function closeCard() {
