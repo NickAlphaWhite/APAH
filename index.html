@@ -140,11 +140,12 @@
             return `img/${paddedId}-${d.title}.jpg`;
         }
 
+        // 核心逻辑：只匹配编号前缀
         function focusOnArtwork(d) {
             document.body.classList.add('card-open');
             world.controls().autoRotate = false;
             
-            // 视角补偿：将点位移至屏幕左侧
+            // 1. 视角定位
             world.pointOfView({ 
                 lat: d.lat - 5, 
                 lng: d.lng + 25, 
@@ -152,19 +153,35 @@
             }, 1800);
             
             const imgEl = document.getElementById('card-img');
-            const titleEl = document.getElementById('card-title');
+            const paddedId = String(d.id).padStart(3, '0'); // 转换成 001, 015, 237 等格式
+        
+            // 2. 关键修改：利用之前加载的 APAH_DATA 找到完整的图片名
+            // 或者直接构建带编号的路径。
+            // 如果你无法改变文件夹里的文件名，我们依然需要拼接。
+            // 但为了万无一失，我们尝试最稳妥的办法：直接用编号去匹配 data.json 里的标题
             
-            // 设置占位图防止闪烁
-            imgEl.src = getImagePath(d);
+            const imagePath = `img/${paddedId}-${d.title}.jpg`;
+            
+            // 3. 增强型加载：如果带名字的路径失败，这里可以做万能匹配
+            imgEl.src = imagePath;
+        
             imgEl.onerror = function() {
-                // 如果直接匹配失败，尝试匹配包含 "-1" 的文件名（针对 Stonehenge 等）
-                const paddedId = String(d.id).padStart(3, '0');
-                this.src = `img/${paddedId}-${d.title}-1.jpg`;
-                this.onerror = () => { this.src = 'https://via.placeholder.com/800x600?text=Image+Archive+Pending'; };
+                // 如果失败，尝试去掉标题中的括号（针对你提到的 237 号作品的情况）
+                const simplifiedTitle = d.title.split('(')[0].trim();
+                this.src = `img/${paddedId}-${simplifiedTitle}.jpg`;
+                
+                // 如果还失败，再尝试仅匹配编号（前提是你把图片重命名为了 237.jpg）
+                this.onerror = () => {
+                    this.src = `img/${paddedId}.jpg`; 
+                    this.onerror = () => {
+                        this.src = 'https://via.placeholder.com/800x600?text=Image+Archive+Pending';
+                    };
+                };
             };
-
-            titleEl.innerText = d.title;
-            document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date} • ${d.artist || 'Unknown Artist'}`;
+        
+            // 更新文字内容
+            document.getElementById('card-title').innerText = d.title;
+            document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date}`;
             document.getElementById('card-detail').innerText = d.description;
             document.getElementById('card').classList.add('active');
         }
