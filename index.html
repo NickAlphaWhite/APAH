@@ -14,42 +14,21 @@
         }
         
         body { 
-            margin: 0; 
-            background: #000; 
-            overflow: hidden; 
+            margin: 0; background: #000; overflow: hidden; 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
-            color: white; 
-            -webkit-font-smoothing: antialiased;
+            color: white; -webkit-font-smoothing: antialiased;
         }
 
-        /* --- 核心修改：标题全透明背景 --- */
         #site-header {
             position: fixed; top: 25px; left: 25px; z-index: 2100;
-            padding: 18px 25px;
-            /* 关键：全透明背景，无背景色 */
-            background: transparent;
-            /* 关键：去掉毛玻璃效果 */
-            backdrop-filter: none; 
-            -webkit-backdrop-filter: none;
-            /* 去掉边框和阴影，让它彻底极简 */
-            border: none; 
-            box-shadow: none;
-            /* 允许鼠标事件透过，不遮挡地球交互 */
-            pointer-events: none; 
+            padding: 18px 25px; background: transparent; backdrop-filter: none; 
+            -webkit-backdrop-filter: none; border: none; box-shadow: none; pointer-events: none; 
         }
-        #header-title {
-            font-size: 20px; font-weight: 800; letter-spacing: -1.2px; margin: 0; line-height: 1;
-        }
+        #header-title { font-size: 20px; font-weight: 800; letter-spacing: -1.2px; margin: 0; line-height: 1; }
         #header-title span { color: var(--apple-blue); }
-        #header-subtitle {
-            font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
-            opacity: 0.5; margin-top: 6px;
-        }
+        #header-subtitle { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; opacity: 0.5; margin-top: 6px; }
 
-        /* 胶囊导航：微调位置配合标题 */
-        #nav-container {
-            position: fixed; top: 30px; right: 25px; display: flex; gap: 10px; z-index: 2000;
-        }
+        #nav-container { position: fixed; top: 30px; right: 25px; display: flex; gap: 10px; z-index: 2000; }
         .nav-capsule {
             background: rgba(25, 25, 28, 0.5); backdrop-filter: blur(30px) saturate(210%); 
             -webkit-backdrop-filter: blur(30px) saturate(210%);
@@ -60,15 +39,9 @@
         .nav-item { font-size: 11px; font-weight: 600; letter-spacing: 2px; cursor: pointer; opacity: 0.4; transition: 0.3s; }
         .nav-item.active, .nav-item:hover { opacity: 1; color: var(--apple-blue); }
 
-        /* 地球容器 */
-        #globeViz { 
-            width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; 
-            background: #000; 
-            transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1);
-        }
-        body.card-open #globeViz { transform: translateX(-10%); }
+        #globeViz { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; background: #000; transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1); }
+        body.card-open #globeViz { transform: translateX(-10%); cursor: w-resize; } /* 提示用户点击左侧可关闭 */
 
-        /* 巨幕侧边面板 (聚类列表和详情页共用) */
         #card {
             position: fixed; right: calc(-1 * var(--card-w)); top: 0; bottom: 0; width: var(--card-w);
             background: var(--glass); backdrop-filter: blur(60px) saturate(210%);
@@ -79,20 +52,14 @@
         }
         #card.active { right: 0; }
         
-        /* 1. 详情页组件 (原有逻辑) */
         #card-detail-view { display: none; }
         #card-img-container { width: 100%; display: flex; flex-direction: column; gap: 30px; margin-bottom: 50px; }
-        .gallery-img { 
-            width: 100%; max-height: 70vh; object-fit: contain; 
-            background: rgba(0,0,0,0.2); border-radius: 24px; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
+        .gallery-img { width: 100%; max-height: 70vh; object-fit: contain; background: rgba(0,0,0,0.2); border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         #card-title { font-size: clamp(32px, 5vw, 60px); font-weight: 800; margin: 0; letter-spacing: -2px; line-height: 1.1; }
         #card-artist { font-size: 20px; font-weight: 500; margin-top: 10px; opacity: 0.9; color: #fff; }
         #card-subtitle { color: var(--apple-blue); font-size: 14px; margin-top: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
         #card-detail { font-size: 18px; opacity: 0.6; line-height: 1.7; margin-top: 40px; max-width: 750px; }
 
-        /* 2. 新增：解决一地多作品的“聚类列表视图” */
         #card-cluster-view { display: none; }
         .cluster-header { margin-bottom: 60px; }
         .cluster-location { font-size: 16px; color: var(--apple-blue); font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
@@ -110,7 +77,6 @@
         .cluster-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
         .cluster-artist { opacity: 0.5; font-size: 13px; margin-top: 4px; }
 
-        /* 详情页返回按钮 */
         .back-trigger {
             display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
             font-size: 12px; font-weight: 700; color: var(--apple-blue); text-transform: uppercase;
@@ -118,10 +84,15 @@
         }
         .back-trigger:hover { opacity: 1; transform: translateX(-5px); }
 
-        .close-trigger { position: absolute; top: 40px; right: 8%; cursor: pointer; font-size: 24px; opacity: 0.3; transition: 0.3s; z-index: 10; }
-        .close-trigger:hover { opacity: 1; }
+        /* 修复：X按钮层级提升，确保不被遮挡 */
+        .close-trigger { 
+            position: fixed; top: 40px; right: 40px; 
+            cursor: pointer; font-size: 26px; opacity: 0.4; 
+            transition: 0.3s; z-index: 3000; 
+            padding: 10px; line-height: 1;
+        }
+        .close-trigger:hover { opacity: 1; transform: scale(1.1); }
 
-        /* 4. 时间轴视图 */
         #timeline-view {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: #000; display: none; z-index: 1800; padding: 140px 10%;
@@ -157,7 +128,7 @@
         </div>
     </div>
 
-    <div id="globeViz"></div>
+    <div id="globeViz" onclick="if(document.body.classList.contains('card-open')) closeCard()"></div>
 
     <div id="card">
         <div class="close-trigger" onclick="closeCard()">✕</div>
@@ -167,8 +138,7 @@
                 <div id="cluster-location-name" class="cluster-location"></div>
                 <h2 id="cluster-artwork-count" class="cluster-count"></h2>
             </div>
-            <div id="cluster-list-content" class="cluster-list">
-                </div>
+            <div id="cluster-list-content" class="cluster-list"></div>
         </div>
 
         <div id="card-detail-view">
@@ -191,7 +161,7 @@
     <script>
         let APAH_DATA = [];
         let APAH_IMG_MAP = {}; 
-        let CURRENT_CLUSTERS = {}; // 存储按地点聚合的数据
+        let CURRENT_CLUSTERS = {}; 
 
         function initializeImageMap() {
             if (typeof imageFiles !== 'undefined') {
@@ -206,7 +176,6 @@
             }
         }
 
-        // 初始化地球 - 使用黑色贴图
         const world = Globe()(document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
             .showAtmosphere(true)
@@ -215,7 +184,10 @@
             .pointColor(() => '#fff')
             .pointRadius(0.7)
             .pointAltitude(0.01)
-            .onPointClick(d => handlePointClick(d));
+            .onPointClick((d, event) => {
+                event.stopPropagation(); // 阻止冒泡到 globeViz 的 click 事件
+                handlePointClick(d);
+            });
 
         world.controls().autoRotate = true;
         world.controls().autoRotateSpeed = 0.5;
@@ -227,26 +199,20 @@
             .then(res => res.json())
             .then(data => {
                 APAH_DATA = data;
-                
-                // --- 预处理：按坐标将作品聚合 ---
+                // 修复：将 London 等地点的作品聚合（降低精度到 0.1 确保合并）
                 APAH_DATA.forEach(artwork => {
-                    // 创建唯一坐标 Key
-                    const key = `${artwork.lat.toFixed(2)}-${artwork.lng.toFixed(2)}`;
+                    const key = `${artwork.lat.toFixed(1)}-${artwork.lng.toFixed(1)}`;
                     if (!CURRENT_CLUSTERS[key]) CURRENT_CLUSTERS[key] = [];
                     CURRENT_CLUSTERS[key].push(artwork);
                 });
-
-                // 展示地图上唯一的点位
                 const uniquePoints = Object.values(CURRENT_CLUSTERS).map(cluster => cluster[0]);
                 world.pointsData(uniquePoints);
             })
             .catch(err => console.error("Data Load Error:", err));
 
-        // --- 核心逻辑：解决一地多作品 ---
         function handlePointClick(d) {
-            const key = `${d.lat.toFixed(2)}-${d.lng.toFixed(2)}`;
+            const key = `${d.lat.toFixed(1)}-${d.lng.toFixed(1)}`;
             const artworks = CURRENT_CLUSTERS[key];
-            
             if (!artworks || artworks.length === 0) return;
 
             document.body.classList.add('card-open');
@@ -254,37 +220,30 @@
             world.pointOfView({ lat: d.lat - 5, lng: d.lng + 25, altitude: 0.7 }, 1800);
 
             if (artworks.length === 1) {
-                // 如果只有一个作品，直接进入详情页
                 showDetailView(artworks[0], false);
             } else {
-                // 如果有多个作品，显示聚类列表页
                 showClusterView(d.location, artworks);
             }
         }
 
         function showClusterView(locationName, artworks) {
             const card = document.getElementById('card');
-            const clusterView = document.getElementById('card-cluster-view');
-            const detailView = document.getElementById('card-detail-view');
-            
-            clusterView.style.display = 'block';
-            detailView.style.display = 'none';
-
+            document.getElementById('card-cluster-view').style.display = 'block';
+            document.getElementById('card-detail-view').style.display = 'none';
             document.getElementById('cluster-location-name').innerText = locationName;
             document.getElementById('cluster-artwork-count').innerText = `${artworks.length} Artworks`;
 
             const listContent = document.getElementById('cluster-list-content');
-            listContent.innerHTML = ''; // 清空
+            listContent.innerHTML = ''; 
 
             artworks.sort((a, b) => a.id - b.id).forEach(d => {
                 const imgThumbName = (APAH_IMG_MAP[d.id] || [])[0];
                 const imgThumb = imgThumbName ? `img/${imgThumbName}` : `img/${String(d.id).padStart(3, '0')}.jpg`;
-                
                 const item = document.createElement('div');
                 item.className = 'cluster-item';
-                item.onclick = () => showDetailView(d, true); 
+                item.onclick = (e) => { e.stopPropagation(); showDetailView(d, true); }; 
                 item.innerHTML = `
-                    <img src="${imgThumb}" class="cluster-thumb" alt="Thumb">
+                    <img src="${imgThumb}" class="cluster-thumb">
                     <div>
                         <div class="cluster-id">ID: ${String(d.id).padStart(3, '0')}</div>
                         <div class="cluster-title">${d.title}</div>
@@ -293,45 +252,30 @@
                 `;
                 listContent.appendChild(item);
             });
-
             card.classList.add('active');
             card.scrollTop = 0;
         }
 
         function showDetailView(d, showBackButton) {
             const card = document.getElementById('card');
-            const clusterView = document.getElementById('card-cluster-view');
-            const detailView = document.getElementById('card-detail-view');
-            
-            clusterView.style.display = 'none';
-            detailView.style.display = 'block';
+            document.getElementById('card-cluster-view').style.display = 'none';
+            document.getElementById('card-detail-view').style.display = 'block';
+            document.getElementById('back-to-cluster').style.display = showBackButton ? 'inline-flex' : 'none';
 
-            const backBtn = document.getElementById('back-to-cluster');
-            backBtn.style.display = showBackButton ? 'inline-flex' : 'none';
-
-            // 多图加载逻辑
             const container = document.getElementById('card-img-container');
             container.innerHTML = ''; 
-
             const matches = APAH_IMG_MAP[d.id];
-            
             if (matches && matches.length > 0) {
                 matches.sort().forEach(filename => {
                     const img = document.createElement('img');
                     img.src = `img/${filename}`;
                     img.className = 'gallery-img';
-                    img.onerror = () => img.style.display = 'none';
                     container.appendChild(img);
                 });
             } else {
-                const paddedId = String(d.id).padStart(3, '0');
                 const img = document.createElement('img');
-                img.src = `img/${paddedId}.jpg`;
+                img.src = `img/${String(d.id).padStart(3, '0')}.jpg`;
                 img.className = 'gallery-img';
-                img.onerror = function() {
-                    this.src = 'https://via.placeholder.com/800x600?text=Image+Missing';
-                    this.onerror = null;
-                };
                 container.appendChild(img);
             }
 
@@ -339,7 +283,6 @@
             document.getElementById('card-artist').innerText = d.artist || ""; 
             document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date}`;
             document.getElementById('card-detail').innerText = d.description;
-            
             card.classList.add('active');
             card.scrollTop = 0;
         }
@@ -348,7 +291,7 @@
             const title = document.getElementById('card-title').innerText;
             const artwork = APAH_DATA.find(d => d.title === title);
             if (artwork) {
-                const key = `${artwork.lat.toFixed(2)}-${artwork.lng.toFixed(2)}`;
+                const key = `${artwork.lat.toFixed(1)}-${artwork.lng.toFixed(1)}`;
                 showClusterView(artwork.location, CURRENT_CLUSTERS[key]);
             }
         }
@@ -359,7 +302,7 @@
             const isExplore = document.getElementById('timeline-view').style.display !== 'block';
             if (isExplore) {
                 world.controls().autoRotate = true;
-                world.pointOfView({ lat: 20, altitude: 2.3 }, 1500);
+                world.pointOfView({ altitude: 2.3 }, 1500);
             }
         }
 
@@ -367,18 +310,15 @@
             const timelineView = document.getElementById('timeline-view');
             const globeView = document.getElementById('globeViz');
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
             if (mode === 'timeline') {
                 document.getElementById('nav-timeline').classList.add('active');
                 timelineView.style.display = 'block';
                 globeView.style.visibility = 'hidden';
                 renderTimeline();
-                world.controls().autoRotate = false;
             } else {
                 document.getElementById('nav-explore').classList.add('active');
                 timelineView.style.display = 'none';
                 globeView.style.visibility = 'visible';
-                world.controls().autoRotate = true;
             }
             closeCard();
         }
@@ -391,7 +331,6 @@
                     <div class="timeline-period">${d.culture || d.period || 'Global Archive'}</div>
                     <div style="font-size: 11px; color: var(--apple-blue); font-weight: 700; margin-bottom: 8px; opacity: 0.8;">${d.date}</div>
                     <div style="font-size: 26px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.2;">${d.title}</div>
-                    <div style="opacity: 0.4; font-size: 13px; margin-top: 6px;">${d.location}</div>
                 </div>
             `).join('');
         }
@@ -400,18 +339,13 @@
             const target = APAH_DATA.find(a => a.id === id);
             if (target) {
                 switchMode('explore');
-                // 从时间轴进入详情，不显示返回聚类按钮
                 setTimeout(() => showDetailView(target, false), 300);
             }
         }
 
         window.addEventListener('resize', () => {
-            world.width(window.innerWidth);
-            world.height(window.innerHeight);
+            world.width(window.innerWidth); world.height(window.innerHeight);
         });
-
-        const renderer = world.renderer();
-        if (renderer) renderer.setPixelRatio(window.devicePixelRatio);
     </script>
 </body>
 </html>
