@@ -39,7 +39,7 @@
         /* 2. 地球容器 */
         #globeViz { 
             width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; 
-            background: radial-gradient(circle at center, #1a1a1c 0%, #000000 100%); 
+            background: #000; 
             transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1);
         }
         body.card-open #globeViz { transform: translateX(-10%); }
@@ -68,12 +68,18 @@
             background: #000; display: none; z-index: 1800; padding: 140px 10%;
             box-sizing: border-box; overflow-y: auto;
         }
-        .timeline-container { border-left: 2px solid var(--apple-blue); padding-left: 40px; margin-top: 60px; }
-        .timeline-item { position: relative; margin-bottom: 60px; cursor: pointer; transition: 0.3s; }
-        .timeline-item:hover { transform: translateX(10px); }
+        .timeline-container { border-left: 1px solid rgba(255,255,255,0.15); padding-left: 40px; margin-top: 60px; }
+        .timeline-item { position: relative; margin-bottom: 80px; cursor: pointer; transition: 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+        .timeline-item:hover { transform: translateX(15px); }
         .timeline-dot { 
-            position: absolute; left: -46px; top: 8px; width: 10px; height: 10px; 
-            background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 15px var(--apple-blue);
+            position: absolute; left: -46px; top: 10px; width: 11px; height: 11px; 
+            background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 20px var(--apple-blue);
+        }
+        .timeline-period {
+            display: inline-block; padding: 4px 10px; border-radius: 6px;
+            background: rgba(0, 122, 255, 0.15); color: var(--apple-blue);
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 12px; border: 1px solid rgba(0, 122, 255, 0.2);
         }
     </style>
 </head>
@@ -106,13 +112,11 @@
 
     <script>
         let APAH_DATA = [];
-        let APAH_IMG_MAP = {}; // 用于快速查询编号对应的图片列表
+        let APAH_IMG_MAP = {}; 
 
-        // --- 核心逻辑：解析 img-list.js 中的数组 ---
         function initializeImageMap() {
             if (typeof imageFiles !== 'undefined') {
                 imageFiles.forEach(filename => {
-                    // 提取开头的数字（前缀匹配）
                     const match = filename.match(/^(\d+)/);
                     if (match) {
                         const id = parseInt(match[1]);
@@ -120,28 +124,27 @@
                         APAH_IMG_MAP[id].push(filename);
                     }
                 });
-                console.log("Image Index Map Ready:", Object.keys(APAH_IMG_MAP).length, "items");
-            } else {
-                console.warn("img-list.js is not loaded or imageFiles array is missing.");
             }
         }
 
-        // 初始化地球
+        // 初始化地球 - 极致简约 & 消除高度感
         const world = Globe()(document.getElementById('globeViz'))
-            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
             .showAtmosphere(true)
-            .atmosphereColor('#4ca5ff')
-            .atmosphereAltitude(0.12)
-            .pointColor(() => '#fff')
-            .pointRadius(0.8)
-            .pointAltitude(0.01)
+            .atmosphereColor('#88c4ff')
+            .atmosphereAltitude(0.2)
+            // 修改点位配置
+            .pointColor(() => 'rgba(255, 255, 255, 0.85)') // 带一点透明度的白色，聚在一起时会柔和重叠
+            .pointRadius(0.35)    // 显著缩小半径，让点位更精致
+            .pointAltitude(0)     // 取消高度，让点位紧贴球面
+            .pointsMerge(true)    // 启用合并渲染，优化大量点位聚在一起时的视觉表现
             .onPointClick(d => focusOnArtwork(d));
 
         world.controls().autoRotate = true;
-        world.controls().autoRotateSpeed = 0.8;
+        world.controls().autoRotateSpeed = 0.5;
         world.pointOfView({ altitude: 2.2 });
 
-        // 初始化数据
         initializeImageMap();
 
         fetch('data.json')
@@ -152,31 +155,19 @@
             })
             .catch(err => console.error("Data Load Error:", err));
 
-        // 核心逻辑：精准匹配图片
         function focusOnArtwork(d) {
             document.body.classList.add('card-open');
             world.controls().autoRotate = false;
-            
-            world.pointOfView({ 
-                lat: d.lat - 5, 
-                lng: d.lng + 25, 
-                altitude: 0.7 
-            }, 1800);
+            world.pointOfView({ lat: d.lat - 5, lng: d.lng + 25, altitude: 0.7 }, 1800);
             
             const imgEl = document.getElementById('card-img');
-            
-            // 从预处理好的 Map 中直接拿文件名
             const matches = APAH_IMG_MAP[d.id];
             
             if (matches && matches.length > 0) {
-                // 如果该编号有多个图，默认加载第一个
                 imgEl.src = `img/${matches[0]}`;
-                console.log(`Found image in index: ${matches[0]}`);
             } else {
-                // 如果索引里没有，尝试最后的降级方案
                 const paddedId = String(d.id).padStart(3, '0');
                 imgEl.src = `img/${paddedId}.jpg`; 
-                console.warn(`No index match for ID ${d.id}, trying fallback.`);
             }
 
             imgEl.onerror = function() {
@@ -193,7 +184,6 @@
         function closeCard() {
             document.body.classList.remove('card-open');
             document.getElementById('card').classList.remove('active');
-            
             const isExplore = document.getElementById('timeline-view').style.display !== 'block';
             if (isExplore) {
                 world.controls().autoRotate = true;
@@ -204,7 +194,6 @@
         function switchMode(mode) {
             const timelineView = document.getElementById('timeline-view');
             const globeView = document.getElementById('globeViz');
-            
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             
             if (mode === 'timeline') {
@@ -227,9 +216,10 @@
             container.innerHTML = APAH_DATA.map(d => `
                 <div class="timeline-item" onclick="jumpFromTimeline(${d.id})">
                     <div class="timeline-dot"></div>
-                    <div style="font-size: 11px; color: var(--apple-blue); font-weight: 700; margin-bottom: 8px;">${d.date}</div>
-                    <div style="font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">${d.title}</div>
-                    <div style="opacity: 0.4; font-size: 13px; margin-top: 4px;">${d.location}</div>
+                    <div class="timeline-period">${d.culture || d.period || 'Global Archive'}</div>
+                    <div style="font-size: 11px; color: var(--apple-blue); font-weight: 700; margin-bottom: 8px; opacity: 0.8;">${d.date}</div>
+                    <div style="font-size: 26px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.2;">${d.title}</div>
+                    <div style="opacity: 0.4; font-size: 13px; margin-top: 6px;">${d.location}</div>
                 </div>
             `).join('');
         }
