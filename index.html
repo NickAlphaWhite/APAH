@@ -195,7 +195,7 @@
 
         initializeImageMap();
 
-        fetch('data.json')
+        fetch('data.json?t=' + new Date().getTime())
             .then(res => res.json())
             .then(data => {
                 APAH_DATA = data;
