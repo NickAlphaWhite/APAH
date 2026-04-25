@@ -75,6 +75,7 @@
             position: absolute; left: -46px; top: 10px; width: 11px; height: 11px; 
             background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 20px var(--apple-blue);
         }
+        /* 时代标签样式 */
         .timeline-period {
             display: inline-block; padding: 4px 10px; border-radius: 6px;
             background: rgba(0, 122, 255, 0.15); color: var(--apple-blue);
@@ -127,18 +128,16 @@
             }
         }
 
-        // 初始化地球 - 极致简约 & 消除高度感
+        // 初始化地球 - 优化对比度
         const world = Globe()(document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
             .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
             .showAtmosphere(true)
             .atmosphereColor('#88c4ff')
             .atmosphereAltitude(0.2)
-            // 修改点位配置
-            .pointColor(() => 'rgba(255, 255, 255, 0.85)') // 带一点透明度的白色，聚在一起时会柔和重叠
-            .pointRadius(0.35)    // 显著缩小半径，让点位更精致
-            .pointAltitude(0)     // 取消高度，让点位紧贴球面
-            .pointsMerge(true)    // 启用合并渲染，优化大量点位聚在一起时的视觉表现
+            .pointColor(() => '#fff')
+            .pointRadius(0.7)
+            .pointAltitude(0.01)
             .onPointClick(d => focusOnArtwork(d));
 
         world.controls().autoRotate = true;
@@ -211,6 +210,7 @@
             closeCard();
         }
 
+        // 修改此处：增加时代（Culture/Period）显示
         function renderTimeline() {
             const container = document.getElementById('timeline-content');
             container.innerHTML = APAH_DATA.map(d => `
