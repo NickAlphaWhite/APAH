@@ -339,6 +339,7 @@
             const target = APAH_DATA.find(a => a.id === id);
             if (target) {
                 switchMode('explore');
+                world.pointOfView({ lat: target.lat - 5, lng: target.lng + 25, altitude: 0.7 }, 1800);
                 setTimeout(() => showDetailView(target, false), 300);
             }
         }
