@@ -409,7 +409,7 @@ const imageFiles = [
 ];
 const APAH_IMG_LIST = {};
 
-imageFilesRaw.forEach(filename => {
+imageFiles.forEach(filename => {
     // 提取开头的数字，例如从 "008-Stonehenge-1.jpg" 提取 "8"
     const match = filename.match(/^(\d+)/);
     if (match) {
