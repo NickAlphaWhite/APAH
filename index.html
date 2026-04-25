@@ -328,7 +328,6 @@
             container.innerHTML = APAH_DATA.map(d => `
                 <div class="timeline-item" onclick="jumpFromTimeline(${d.id})">
                     <div class="timeline-dot"></div>
-                    <div class="timeline-period">${d.culture || d.period || 'Global Archive'}</div>
                     <div style="font-size: 11px; color: var(--apple-blue); font-weight: 700; margin-bottom: 8px; opacity: 0.8;">${d.date}</div>
                     <div style="font-size: 26px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.2;">${d.title}</div>
                 </div>
