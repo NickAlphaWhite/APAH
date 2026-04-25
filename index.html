@@ -40,7 +40,7 @@
         .nav-item.active, .nav-item:hover { opacity: 1; color: var(--apple-blue); }
 
         #globeViz { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; background: #000; transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1); }
-        body.card-open #globeViz { transform: translateX(-10%); cursor: w-resize; } /* 提示用户点击左侧可关闭 */
+        body.card-open #globeViz { transform: translateX(-10%); cursor: w-resize; }
 
         #card {
             position: fixed; right: calc(-1 * var(--card-w)); top: 0; bottom: 0; width: var(--card-w);
@@ -84,7 +84,6 @@
         }
         .back-trigger:hover { opacity: 1; transform: translateX(-5px); }
 
-        /* 修复：X按钮层级提升，确保不被遮挡 */
         .close-trigger { 
             position: fixed; top: 40px; right: 40px; 
             cursor: pointer; font-size: 26px; opacity: 0.4; 
@@ -105,11 +104,17 @@
             position: absolute; left: -46px; top: 10px; width: 11px; height: 11px; 
             background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 20px var(--apple-blue);
         }
-        .timeline-period {
-            display: inline-block; padding: 4px 10px; border-radius: 6px;
-            background: rgba(0, 122, 255, 0.15); color: var(--apple-blue);
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; margin-bottom: 12px; border: 1px solid rgba(0, 122, 255, 0.2);
+
+        /* 移动端专属适配 */
+        @media (max-width: 768px) {
+            :root { --card-w: 100vw; }
+            #card { padding: 80px 20px 40px 20px; }
+            #nav-container { right: 15px; top: auto; bottom: 30px; }
+            .nav-capsule { padding: 10px 20px; gap: 20px; }
+            .close-trigger { top: 20px; right: 20px; font-size: 30px; opacity: 0.8; background: rgba(0,0,0,0.4); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+            #card-title { font-size: 32px; }
+            .cluster-thumb { width: 70px; height: 70px; }
+            .timeline-container { padding-left: 30px; }
         }
     </style>
 </head>
@@ -162,6 +167,7 @@
         let APAH_DATA = [];
         let APAH_IMG_MAP = {}; 
         let CURRENT_CLUSTERS = {}; 
+        const isMobile = window.innerWidth < 768;
 
         function initializeImageMap() {
             if (typeof imageFiles !== 'undefined') {
@@ -182,10 +188,10 @@
             .atmosphereColor('#4ca5ff')
             .atmosphereAltitude(0.12)
             .pointColor(() => '#fff')
-            .pointRadius(0.7)
+            .pointRadius(isMobile ? 1.6 : 0.7) // 移动端点位放大，方便点击
             .pointAltitude(0.01)
             .onPointClick((d, event) => {
-                event.stopPropagation(); // 阻止冒泡到 globeViz 的 click 事件
+                event.stopPropagation();
                 handlePointClick(d);
             });
 
@@ -199,7 +205,6 @@
             .then(res => res.json())
             .then(data => {
                 APAH_DATA = data;
-                // 修复：将 London 等地点的作品聚合（降低精度到 0.1 确保合并）
                 APAH_DATA.forEach(artwork => {
                     const key = `${artwork.lat.toFixed(1)}-${artwork.lng.toFixed(1)}`;
                     if (!CURRENT_CLUSTERS[key]) CURRENT_CLUSTERS[key] = [];
@@ -216,8 +221,16 @@
             if (!artworks || artworks.length === 0) return;
 
             document.body.classList.add('card-open');
+            
+            // 核心：打开卡片立即停止旋转
             world.controls().autoRotate = false;
-            world.pointOfView({ lat: d.lat - 5, lng: d.lng + 25, altitude: 0.7 }, 1800);
+            
+            // 移动端视角居中，桌面端偏移以便显示卡片
+            world.pointOfView({ 
+                lat: d.lat - 5, 
+                lng: d.lng + (isMobile ? 0 : 25), 
+                altitude: isMobile ? 1.2 : 0.7 
+            }, 1800);
 
             if (artworks.length === 1) {
                 showDetailView(artworks[0], false);
@@ -301,7 +314,7 @@
             document.getElementById('card').classList.remove('active');
             const isExplore = document.getElementById('timeline-view').style.display !== 'block';
             if (isExplore) {
-                world.controls().autoRotate = true;
+                world.controls().autoRotate = true; // 关闭后恢复旋转
                 world.pointOfView({ altitude: 2.3 }, 1500);
             }
         }
@@ -325,6 +338,7 @@
 
         function renderTimeline() {
             const container = document.getElementById('timeline-content');
+            // 此处已彻底移除 timeline-period (Global Archive)
             container.innerHTML = APAH_DATA.map(d => `
                 <div class="timeline-item" onclick="jumpFromTimeline(${d.id})">
                     <div class="timeline-dot"></div>
@@ -338,8 +352,13 @@
             const target = APAH_DATA.find(a => a.id === id);
             if (target) {
                 switchMode('explore');
+                // 核心：跳转后停止旋转
                 world.controls().autoRotate = false;
-                world.pointOfView({ lat: target.lat - 5, lng: target.lng + 25, altitude: 0.7 }, 1800);
+                world.pointOfView({ 
+                    lat: target.lat - 5, 
+                    lng: target.lng + (isMobile ? 0 : 25), 
+                    altitude: 0.7 
+                }, 1800);
                 setTimeout(() => showDetailView(target, false), 300);
             }
         }
