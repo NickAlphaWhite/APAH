@@ -54,8 +54,18 @@
             z-index: 1500; display: flex; flex-direction: column; overflow-y: auto; box-sizing: border-box;
         }
         #card.active { right: 0; }
-        #card-img { width: 100%; max-height: 55vh; object-fit: contain; background: rgba(0,0,0,0.2); border-radius: 24px; margin-bottom: 50px; box-shadow: 0 30px 80px rgba(0,0,0,0.8); }
+        
+        /* 图片组容器 */
+        #card-img-container { width: 100%; display: flex; flex-direction: column; gap: 30px; margin-bottom: 50px; }
+        .gallery-img { 
+            width: 100%; max-height: 70vh; object-fit: contain; 
+            background: rgba(0,0,0,0.2); border-radius: 24px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
         #card-title { font-size: clamp(32px, 5vw, 60px); font-weight: 800; margin: 0; letter-spacing: -2px; line-height: 1.1; }
+        /* 作者样式 */
+        #card-artist { font-size: 20px; font-weight: 500; margin-top: 10px; opacity: 0.9; color: #fff; }
         #card-subtitle { color: var(--apple-blue); font-size: 14px; margin-top: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
         #card-detail { font-size: 18px; opacity: 0.6; line-height: 1.7; margin-top: 40px; max-width: 750px; }
 
@@ -91,9 +101,10 @@
 
     <div id="card">
         <div class="close-trigger" onclick="closeCard()">✕</div>
-        <img id="card-img" src="" alt="Artwork">
+        <div id="card-img-container"></div>
         <div class="card-content">
             <h2 id="card-title"></h2>
+            <div id="card-artist"></div>
             <div id="card-subtitle"></div>
             <p id="card-detail"></p>
         </div>
@@ -106,13 +117,11 @@
 
     <script>
         let APAH_DATA = [];
-        let APAH_IMG_MAP = {}; // 用于快速查询编号对应的图片列表
+        let APAH_IMG_MAP = {}; 
 
-        // --- 核心逻辑：解析 img-list.js 中的数组 ---
         function initializeImageMap() {
             if (typeof imageFiles !== 'undefined') {
                 imageFiles.forEach(filename => {
-                    // 提取开头的数字（前缀匹配）
                     const match = filename.match(/^(\d+)/);
                     if (match) {
                         const id = parseInt(match[1]);
@@ -126,7 +135,6 @@
             }
         }
 
-        // 初始化地球
         const world = Globe()(document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
             .showAtmosphere(true)
@@ -141,7 +149,6 @@
         world.controls().autoRotateSpeed = 0.8;
         world.pointOfView({ altitude: 2.2 });
 
-        // 初始化数据
         initializeImageMap();
 
         fetch('data.json')
@@ -152,43 +159,51 @@
             })
             .catch(err => console.error("Data Load Error:", err));
 
-        // 核心逻辑：精准匹配图片
         function focusOnArtwork(d) {
             document.body.classList.add('card-open');
             world.controls().autoRotate = false;
-            world.pointOfView({ lat: d.lat - 5, lng: d.lng + 25, altitude: 0.7 }, 1800);
             
+            world.pointOfView({ 
+                lat: d.lat - 5, 
+                lng: d.lng + 25, 
+                altitude: 0.7 
+            }, 1800);
+            
+            // 核心修改：多图加载逻辑
             const container = document.getElementById('card-img-container');
-            container.innerHTML = ''; // 清空之前的图片
+            container.innerHTML = ''; // 清空旧图
 
-            const matches = APAH_IMG_MAP[d.id] || [];
+            const matches = APAH_IMG_MAP[d.id];
             
-            if (matches.length > 0) {
-                // 遍历并创建所有图片
-                matches.forEach(imgName => {
+            if (matches && matches.length > 0) {
+                // 排序确保 01a 在 01b 前面
+                matches.sort().forEach(filename => {
                     const img = document.createElement('img');
-                    img.src = `img/${imgName}`;
+                    img.src = `img/${filename}`;
                     img.className = 'gallery-img';
-                    img.alt = d.title;
-                    img.onerror = () => img.style.display = 'none'; // 加载失败则隐藏
+                    img.onerror = () => img.style.display = 'none';
                     container.appendChild(img);
                 });
             } else {
-                // 回退方案：尝试带补全编号的单图
                 const paddedId = String(d.id).padStart(3, '0');
                 const img = document.createElement('img');
                 img.src = `img/${paddedId}.jpg`;
                 img.className = 'gallery-img';
-                img.onerror = () => img.src = 'https://via.placeholder.com/800x600?text=Image+Missing';
+                img.onerror = function() {
+                    this.src = 'https://via.placeholder.com/800x600?text=Image+Missing';
+                    this.onerror = null;
+                };
                 container.appendChild(img);
             }
 
             document.getElementById('card-title').innerText = d.title;
+            // 显示作者（若 data.json 中没有 artist 字段则不显示）
+            document.getElementById('card-artist').innerText = d.artist || ""; 
             document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date}`;
             document.getElementById('card-detail').innerText = d.description;
             document.getElementById('card').classList.add('active');
             
-            // 回顶侧边栏
+            // 每次打开自动回顶
             document.getElementById('card').scrollTop = 0;
         }
 
