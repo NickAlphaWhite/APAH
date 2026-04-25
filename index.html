@@ -21,7 +21,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 1. 悬浮胶囊导航 - 始终保持物理中心 */
+        /* 1. 悬浮胶囊导航 */
         #nav-container {
             position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 10px; z-index: 2000;
@@ -35,15 +35,15 @@
         .nav-item { font-size: 11px; font-weight: 600; letter-spacing: 2px; cursor: pointer; opacity: 0.4; transition: 0.3s; }
         .nav-item.active, .nav-item:hover { opacity: 1; color: var(--apple-blue); }
 
-        /* 2. 地球容器与动态偏移 */
+        /* 2. 地球容器 */
         #globeViz { 
             width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; 
             background: radial-gradient(circle at center, #1a1a1c 0%, #000000 100%); 
             transition: 1.2s cubic-bezier(0.19, 1, 0.22, 1);
         }
-        body.card-open #globeViz { transform: translateX(-10%); } /* 适度左偏，保留地球轮廓 */
+        body.card-open #globeViz { transform: translateX(-10%); }
 
-        /* 3. 巨幕侧边面板 (2/3 宽度) */
+        /* 3. 巨幕侧边面板 */
         #card {
             position: fixed; right: calc(-1 * var(--card-w)); top: 0; bottom: 0; width: var(--card-w);
             background: var(--glass); backdrop-filter: blur(60px) saturate(210%);
@@ -53,12 +53,12 @@
             z-index: 1500; display: flex; flex-direction: column; overflow-y: auto; box-sizing: border-box;
         }
         #card.active { right: 0; }
-        #card-img { width: 100%; max-height: 50vh; object-fit: cover; border-radius: 24px; margin-bottom: 50px; box-shadow: 0 30px 80px rgba(0,0,0,0.8); }
+        #card-img { width: 100%; max-height: 55vh; object-fit: contain; background: rgba(0,0,0,0.2); border-radius: 24px; margin-bottom: 50px; box-shadow: 0 30px 80px rgba(0,0,0,0.8); }
         #card-title { font-size: clamp(32px, 5vw, 60px); font-weight: 800; margin: 0; letter-spacing: -2px; line-height: 1.1; }
         #card-subtitle { color: var(--apple-blue); font-size: 14px; margin-top: 15px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
         #card-detail { font-size: 18px; opacity: 0.6; line-height: 1.7; margin-top: 40px; max-width: 750px; }
 
-        .close-trigger { position: absolute; top: 40px; right: 8%; cursor: pointer; font-size: 24px; opacity: 0.3; transition: 0.3s; }
+        .close-trigger { position: absolute; top: 40px; right: 8%; cursor: pointer; font-size: 24px; opacity: 0.3; transition: 0.3s; z-index: 10; }
         .close-trigger:hover { opacity: 1; }
 
         /* 4. 时间轴视图 */
@@ -68,7 +68,8 @@
             box-sizing: border-box; overflow-y: auto;
         }
         .timeline-container { border-left: 2px solid var(--apple-blue); padding-left: 40px; margin-top: 60px; }
-        .timeline-item { position: relative; margin-bottom: 60px; }
+        .timeline-item { position: relative; margin-bottom: 60px; cursor: pointer; transition: 0.3s; }
+        .timeline-item:hover { transform: translateX(10px); }
         .timeline-dot { 
             position: absolute; left: -46px; top: 8px; width: 10px; height: 10px; 
             background: var(--apple-blue); border-radius: 50%; box-shadow: 0 0 15px var(--apple-blue);
@@ -79,9 +80,9 @@
 
     <div id="nav-container">
         <div class="nav-capsule">
-            <div class="nav-item active" onclick="switchMode('explore')">EXPLORE</div>
-            <div class="nav-item" onclick="switchMode('timeline')">CHRONICLE</div>
-            <div class="nav-item" onclick="switchMode('quiz')">ASSESSMENT</div>
+            <div id="nav-explore" class="nav-item active" onclick="switchMode('explore')">EXPLORE</div>
+            <div id="nav-timeline" class="nav-item" onclick="switchMode('timeline')">CHRONICLE</div>
+            <div class="nav-item" style="cursor: not-allowed; opacity: 0.1;">ASSESSMENT</div>
         </div>
     </div>
 
@@ -89,7 +90,7 @@
 
     <div id="card">
         <div class="close-trigger" onclick="closeCard()">✕</div>
-        <img id="card-img" src="">
+        <img id="card-img" src="" alt="Artwork">
         <div class="card-content">
             <h2 id="card-title"></h2>
             <div id="card-subtitle"></div>
@@ -103,108 +104,134 @@
     </div>
 
     <script>
-        // 数据示例 (对接 250 数据时只需按此格式添加)
-        const APAH_DATA = [
-            { id: "001", lat: -27.95, lng: 16.73, title: "Apollo 11 Stones", loc: "Namibia", period: "c. 25,500 BCE", img: "001.jpg", desc: "These stone fragments represent some of the earliest evidence of human artistic expression on the African continent, featuring stylized animal figures." },
-            { id: "007", lat: 30.27, lng: 120.15, title: "Jade Cong", loc: "China", period: "c. 3300 BCE", img: "007.jpg", desc: "Intricate jade carvings from the Liangzhu culture, representing a sophisticated understanding of ritual and geometry." },
-            { id: "035", lat: 37.97, lng: 23.72, title: "Acropolis", loc: "Greece", period: "c. 447 BCE", img: "035.jpg", desc: "The pinnacle of Classical Greek architecture, symbolizing the height of Athenian democracy and cultural influence." }
-        ];
+        let APAH_DATA = [];
 
         // 初始化地球
         const world = Globe()(document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
-            .showAtmosphere(true).atmosphereColor('#4ca5ff').atmosphereAltitude(0.12)
-            .pointsData(APAH_DATA).pointColor(() => '#fff').pointRadius(0.7).pointAltitude(0.01)
+            .showAtmosphere(true)
+            .atmosphereColor('#4ca5ff')
+            .atmosphereAltitude(0.12)
+            .pointColor(() => '#fff')
+            .pointRadius(0.8)
+            .pointAltitude(0.01)
             .onPointClick(d => focusOnArtwork(d));
 
         world.controls().autoRotate = true;
-        world.controls().autoRotateSpeed = 0.05;
+        world.controls().autoRotateSpeed = 0.8;
         world.pointOfView({ altitude: 2.2 });
 
-        function switchMode(mode) {
-            // 更新导航高亮
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('active');
-                if(el.innerText.toLowerCase() === mode || (mode === 'timeline' && el.innerText === 'CHRONICLE')) el.classList.add('active');
+        // 动态加载 data.json
+        fetch('data.json')
+            .then(res => res.json())
+            .then(data => {
+                APAH_DATA = data;
+                world.pointsData(APAH_DATA);
+            })
+            .catch(err => {
+                console.error("无法加载 data.json，请确保文件存在并使用服务器环境运行。", err);
             });
 
-            // 切换视图显示
-            const isTimeline = (mode === 'timeline');
-            document.getElementById('timeline-view').style.display = isTimeline ? 'block' : 'none';
-            document.getElementById('globeViz').style.visibility = isTimeline ? 'hidden' : 'visible';
-            
-            if (isTimeline) {
-                renderTimeline();
-                world.controls().autoRotate = false;
-            } else {
-                if (!document.body.classList.contains('card-open')) world.controls().autoRotate = true;
-            }
-            closeCard(); 
-        }
-
-        function renderTimeline() {
-            document.getElementById('timeline-content').innerHTML = APAH_DATA.map(d => `
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div style="font-size: 12px; opacity: 0.4; margin-bottom: 5px;">${d.period}</div>
-                    <div style="font-size: 28px; font-weight: 700; letter-spacing: -1px;">${d.title}</div>
-                    <div style="opacity: 0.5; font-size: 14px;">${d.loc}</div>
-                </div>
-            `).join('');
+        // 图片路径匹配逻辑
+        function getImagePath(d) {
+            const paddedId = String(d.id).padStart(3, '0');
+            // 针对 list.txt 中的多图情况，默认尝试读取 "-1" 或者直接匹配标题
+            // 逻辑：img/001-Title.jpg
+            return `img/${paddedId}-${d.title}.jpg`;
         }
 
         function focusOnArtwork(d) {
             document.body.classList.add('card-open');
             world.controls().autoRotate = false;
             
-            // 补偿逻辑：lng + 20 确保点位落在左侧视野中心
+            // 视角补偿：将点位移至屏幕左侧
             world.pointOfView({ 
                 lat: d.lat - 5, 
-                lng: d.lng + 20, 
-                altitude: 0.65 
-            }, 2000);
+                lng: d.lng + 25, 
+                altitude: 0.7 
+            }, 1800);
             
-            document.getElementById('card-img').src = `img/${d.img}`;
-            document.getElementById('card-title').innerText = d.title;
-            document.getElementById('card-subtitle').innerText = `${d.loc} / ${d.period}`;
-            document.getElementById('card-detail').innerText = d.desc;
+            const imgEl = document.getElementById('card-img');
+            const titleEl = document.getElementById('card-title');
+            
+            // 设置占位图防止闪烁
+            imgEl.src = getImagePath(d);
+            imgEl.onerror = function() {
+                // 如果直接匹配失败，尝试匹配包含 "-1" 的文件名（针对 Stonehenge 等）
+                const paddedId = String(d.id).padStart(3, '0');
+                this.src = `img/${paddedId}-${d.title}-1.jpg`;
+                this.onerror = () => { this.src = 'https://via.placeholder.com/800x600?text=Image+Archive+Pending'; };
+            };
+
+            titleEl.innerText = d.title;
+            document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date} • ${d.artist || 'Unknown Artist'}`;
+            document.getElementById('card-detail').innerText = d.description;
             document.getElementById('card').classList.add('active');
         }
 
         function closeCard() {
-            // 1. 移除偏移类
             document.body.classList.remove('card-open');
             document.getElementById('card').classList.remove('active');
             
-            // 2. 镜头回正的同时，直接开启自转
-            world.controls().autoRotate = true; 
-            world.controls().autoRotateSpeed = 1; // 稍微提速，增加动态感
-
-            world.pointOfView({ 
-                lat: 10, 
-                lng: world.pointOfView().lng, // 顺着当前的经度直接回正，不产生逆向跳动
-                altitude: 2.2 
-            }, 1500);
-
-            // 3. 兜底逻辑：确保在模式切换回来时也能转
             const isExplore = document.getElementById('timeline-view').style.display !== 'block';
-            if (!isExplore) {
-                world.controls().autoRotate = false;
+            if (isExplore) {
+                world.controls().autoRotate = true;
+                world.pointOfView({ lat: 20, altitude: 2.2 }, 1500);
             }
         }
 
-// 补充：初始化时的速度也同步提升
-world.controls().autoRotateSpeed = 1;
+        function switchMode(mode) {
+            const timelineView = document.getElementById('timeline-view');
+            const globeView = document.getElementById('globeViz');
+            
+            // UI 状态切换
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            if (mode === 'timeline') {
+                document.getElementById('nav-timeline').classList.add('active');
+                timelineView.style.display = 'block';
+                globeView.style.visibility = 'hidden';
+                renderTimeline();
+                world.controls().autoRotate = false;
+            } else {
+                document.getElementById('nav-explore').classList.add('active');
+                timelineView.style.display = 'none';
+                globeView.style.visibility = 'visible';
+                world.controls().autoRotate = true;
+            }
+            closeCard();
+        }
 
-        // 处理 Retina 屏幕清晰度
-        const renderer = world.renderer();
-        if (renderer) renderer.setPixelRatio(window.devicePixelRatio);
+        function renderTimeline() {
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = APAH_DATA.map(d => `
+                <div class="timeline-item" onclick="jumpFromTimeline(${d.id})">
+                    <div class="timeline-dot"></div>
+                    <div style="font-size: 11px; color: var(--apple-blue); font-weight: 700; margin-bottom: 8px;">${d.date}</div>
+                    <div style="font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">${d.title}</div>
+                    <div style="opacity: 0.4; font-size: 13px; margin-top: 4px;">${d.location}</div>
+                </div>
+            `).join('');
+        }
 
-        // 窗口缩放适配
+        function jumpFromTimeline(id) {
+            const target = APAH_DATA.find(a => a.id === id);
+            if (target) {
+                switchMode('explore');
+                // 延迟等待地球视图重绘
+                setTimeout(() => focusOnArtwork(target), 300);
+            }
+        }
+
+        // 窗口适配
         window.addEventListener('resize', () => {
             world.width(window.innerWidth);
             world.height(window.innerHeight);
         });
+
+        // Retina 优化
+        const renderer = world.renderer();
+        if (renderer) renderer.setPixelRatio(window.devicePixelRatio);
     </script>
 </body>
 </html>
