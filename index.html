@@ -193,6 +193,7 @@
             }
         }
 
+        // 初始化 Globe，点位半径固定
         const world = Globe()(document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
             .showAtmosphere(true)
@@ -239,27 +240,11 @@
             closeCard();
         }
 
-        // --- Assessment Logic ---
-
-        function getNextArtwork() {
-            let pool = isWrongOnlyMode ? APAH_DATA.filter(d => wrongCollection.includes(d.id)) : APAH_DATA;
-            if (pool.length === 0) {
-                alert("Collection is empty! Switching to All Mode.");
-                isWrongOnlyMode = false;
-                pool = APAH_DATA;
-                updateWrongCount();
-            }
-            if (isRandomMode) return pool[Math.floor(Math.random() * pool.length)];
-            sequenceIndex = (sequenceIndex + 1) % pool.length;
-            return pool[sequenceIndex];
-        }
-
         function nextQuestion() {
             if (quizIndex < quizHistory.length - 1) displayQuiz(quizHistory[++quizIndex]);
             else {
                 const item = getNextArtwork();
-                quizHistory.push(item);
-                quizIndex++;
+                quizHistory.push(item); quizIndex++;
                 displayQuiz(item);
             }
         }
@@ -268,11 +253,18 @@
             if (quizIndex > 0) displayQuiz(quizHistory[--quizIndex]);
         }
 
+        function getNextArtwork() {
+            let pool = isWrongOnlyMode ? APAH_DATA.filter(d => wrongCollection.includes(d.id)) : APAH_DATA;
+            if (pool.length === 0) { isWrongOnlyMode = false; pool = APAH_DATA; updateWrongCount(); }
+            if (isRandomMode) return pool[Math.floor(Math.random() * pool.length)];
+            sequenceIndex = (sequenceIndex + 1) % pool.length;
+            return pool[sequenceIndex];
+        }
+
         function displayQuiz(item) {
             currentQuizItem = item;
             const scrollBox = document.getElementById('quiz-img-scroll');
             scrollBox.innerHTML = '';
-            
             const matches = APAH_IMG_MAP[item.id] || [];
             if (matches.length > 0) {
                 matches.sort().forEach(fname => {
@@ -285,7 +277,6 @@
                 img.src = `img/${String(item.id).padStart(3, '0')}.jpg`;
                 scrollBox.appendChild(img);
             }
-
             document.querySelectorAll('.quiz-field').forEach(f => f.value = '');
             document.getElementById('quiz-feedback').innerHTML = '';
             scrollBox.scrollTop = 0;
@@ -297,51 +288,33 @@
             const feedback = document.getElementById('quiz-feedback');
             const correctTitle = currentQuizItem.title.toLowerCase();
 
-            // 如果标题包含输入的关键字，则判定正确
             if (ut && (correctTitle.includes(ut) || ut.includes(correctTitle))) {
-                feedback.innerHTML = `
-                    <span style="color:var(--apple-blue); font-weight:800; font-size:16px;">CORRECT</span><br>
-                    <div style="margin-top:5px; opacity:0.9;">
-                        <b>${currentQuizItem.title}</b><br>
-                        <small>${currentQuizItem.artist} | ${currentQuizItem.date}</small><br>
-                        <small style="color:var(--apple-gold)">${currentQuizItem.location} • ${currentQuizItem.materials}</small>
-                    </div>`;
+                feedback.innerHTML = `<span style="color:var(--apple-blue); font-weight:800; font-size:16px;">CORRECT</span><br>
+                    <div style="margin-top:5px; opacity:0.9;"><b>${currentQuizItem.title}</b><br>
+                    <small>${currentQuizItem.artist} | ${currentQuizItem.date}</small><br>
+                    <small style="color:var(--apple-gold)">${currentQuizItem.location} • ${currentQuizItem.materials}</small></div>`;
             } else {
-                feedback.innerHTML = `
-                    <span style="color:var(--apple-red); font-weight:800; font-size:16px;">REVIEW NEEDED</span><br>
-                    <div style="margin-top:5px; opacity:0.9;">
-                        <b>Answer: ${currentQuizItem.title}</b><br>
-                        <small>${currentQuizItem.location} • ${currentQuizItem.materials}</small>
-                    </div>`;
-                
-                // 答错自动加入收藏
-                if (!wrongCollection.includes(currentQuizItem.id)) {
-                    wrongCollection.push(currentQuizItem.id);
-                    saveCollection();
-                }
+                feedback.innerHTML = `<span style="color:var(--apple-red); font-weight:800; font-size:16px;">REVIEW NEEDED</span><br>
+                    <div style="margin-top:5px; opacity:0.9;"><b>Answer: ${currentQuizItem.title}</b><br>
+                    <small>${currentQuizItem.location} • ${currentQuizItem.materials}</small></div>`;
+                if (!wrongCollection.includes(currentQuizItem.id)) { wrongCollection.push(currentQuizItem.id); saveCollection(); }
             }
         }
 
-        // --- Original Collection & Navigation Functions ---
         function handleCollection() {
             const idx = wrongCollection.indexOf(currentQuizItem.id);
             if (idx > -1) wrongCollection.splice(idx, 1);
             else wrongCollection.push(currentQuizItem.id);
-            saveCollection();
-            updateCollectBtn();
+            saveCollection(); updateCollectBtn();
         }
 
-        function saveCollection() {
-            localStorage.setItem('apah_wrong_v2', JSON.stringify(wrongCollection));
-            updateWrongCount();
-        }
+        function saveCollection() { localStorage.setItem('apah_wrong_v2', JSON.stringify(wrongCollection)); updateWrongCount(); }
 
         function updateWrongCount() {
             const btn = document.getElementById('wrong-mode-btn');
             btn.innerText = `COLLECTION (${wrongCollection.length})`;
             btn.style.color = isWrongOnlyMode ? 'var(--apple-gold)' : 'white';
-            if (isWrongOnlyMode) btn.style.borderColor = 'var(--apple-gold)';
-            else btn.style.borderColor = 'rgba(255,255,255,0.2)';
+            btn.style.borderColor = isWrongOnlyMode ? 'var(--apple-gold)' : 'rgba(255,255,255,0.2)';
         }
 
         function updateCollectBtn() {
@@ -352,31 +325,15 @@
             btn.style.borderColor = isCollected ? 'var(--apple-red)' : 'var(--apple-blue)';
         }
 
-        function toggleOrderMode() {
-            isRandomMode = !isRandomMode;
-            document.getElementById('order-btn').innerText = isRandomMode ? "RANDOM" : "SEQUENTIAL";
-            sequenceIndex = -1;
-        }
-
-        function toggleWrongMode() {
-            isWrongOnlyMode = !isWrongOnlyMode;
-            updateWrongCount();
-            quizHistory = []; quizIndex = -1; // 切换模式重置历史
-            nextQuestion();
-        }
-
+        function toggleOrderMode() { isRandomMode = !isRandomMode; document.getElementById('order-btn').innerText = isRandomMode ? "RANDOM" : "SEQUENTIAL"; sequenceIndex = -1; }
+        function toggleWrongMode() { isWrongOnlyMode = !isWrongOnlyMode; updateWrongCount(); quizHistory = []; quizIndex = -1; nextQuestion(); }
         function searchAndAdd() {
             const val = document.getElementById('quiz-search').value.toLowerCase();
             const found = APAH_DATA.find(d => d.title.toLowerCase().includes(val));
-            if (found && !wrongCollection.includes(found.id)) {
-                wrongCollection.push(found.id);
-                saveCollection();
-                alert("Added to Collection: " + found.title);
-            }
+            if (found && !wrongCollection.includes(found.id)) { wrongCollection.push(found.id); saveCollection(); alert("Added to Collection: " + found.title); }
             document.getElementById('quiz-search').value = '';
         }
 
-        // --- Explore/Timeline Functions ---
         function handlePointClick(d) {
             const key = `${d.lat.toFixed(1)}-${d.lng.toFixed(1)}`;
             const artworks = CURRENT_CLUSTERS[key];
@@ -391,15 +348,10 @@
             document.getElementById('card-detail-view').classList.remove('hidden');
             const container = document.getElementById('card-img-container');
             container.innerHTML = '';
-            
             const matches = APAH_IMG_MAP[d.id] || [];
             (matches.length ? matches : [`${String(d.id).padStart(3, '0')}.jpg`]).forEach(fname => {
-                const img = document.createElement('img');
-                img.src = `img/${fname}`;
-                img.className = 'gallery-img';
-                container.appendChild(img);
+                const img = document.createElement('img'); img.src = `img/${fname}`; img.className = 'gallery-img'; container.appendChild(img);
             });
-
             document.getElementById('card-title').innerText = d.title;
             document.getElementById('card-artist').innerText = d.artist || "Unknown";
             document.getElementById('card-subtitle').innerText = `${d.location} • ${d.date}`;
@@ -408,11 +360,7 @@
             document.getElementById('card').scrollTop = 0;
         }
 
-        function closeCard() {
-            document.body.classList.remove('card-open');
-            document.getElementById('card').classList.remove('active');
-            if (document.getElementById('nav-explore').classList.contains('active')) world.controls().autoRotate = true;
-        }
+        function closeCard() { document.body.classList.remove('card-open'); document.getElementById('card').classList.remove('active'); if (document.getElementById('nav-explore').classList.contains('active')) world.controls().autoRotate = true; }
 
         function renderTimeline() {
             document.getElementById('timeline-content').innerHTML = APAH_DATA.map(d => `
@@ -420,8 +368,7 @@
                     <div class="timeline-dot"></div>
                     <div style="font-size:11px; color:var(--apple-blue); font-weight:700;">${d.date}</div>
                     <div style="font-size:22px; font-weight:700;">${d.title}</div>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
 
         function jumpFromTimeline(id) {
